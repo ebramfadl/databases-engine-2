@@ -138,7 +138,7 @@ public class DBApp {
         //write ===> FileOutputStream
         //Read ===> FileInputStream
         try {
-            FileOutputStream fileOut = new FileOutputStream("src/main/resources/data/"+page.getPageNumber()+".ser");
+            FileOutputStream fileOut = new FileOutputStream("src/main/resources/data/"+page.getTableName()+"/"+page.getPageNumber()+".ser");
             ObjectOutputStream objectOut = new ObjectOutputStream(fileOut);
             objectOut.writeObject(page);
             //System.out.println("page updated " + path + " successfully!");

@@ -44,6 +44,10 @@ public class Page implements Serializable {
         return "src/main/resources/data/"+tableName+"/"+pageNumber+".ser";
     }
 
+    public String getTableName() {
+        return tableName;
+    }
+
     @Override
     public String toString() {
         String str = "";
