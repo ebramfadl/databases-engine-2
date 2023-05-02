@@ -188,6 +188,51 @@ public class Octree {
         }
     }
 
+    public void delete(Object []arr){
+        delete(arr,root);
+    }
+
+    public void delete(Object[] arr,Node node){
+        if(node.isLeaf()){
+            Iterator<Object[]> iterator=node.elements.iterator();
+            while(iterator.hasNext()){
+                Object[] cur= iterator.next();
+                if(compareArr(arr,cur)){
+                    iterator.remove();
+                }
+            }
+        }
+        else{
+            for(Node n: node.children){
+                if(checkWithinRange(arr,n))
+                    delete(arr,n);
+            }
+        }
+
+
+
+    }
+
+    public static boolean compareArr(Object[] arr1,Object[] arr2){
+
+        return arr1[0].equals(arr2[0]) && arr1[1].equals(arr2[1]) && arr1[2].equals(arr2[2]);
+
+    }
+
+    public void update(Object[] oldObject,Object[] newObject){
+        delete(oldObject);
+        insert(newObject);
+
+    }
+
+
+
+
+
+
+
+
+
     public static void main(String[] args) {
         Octree octree = new Octree(1.0,321456985.0,0.0,5.5,1.0,40.0);
         Object[] o1 = {"arwa",2.1,20.0};
