@@ -2,6 +2,9 @@ package main.engine;
 
 import java.io.BufferedReader;
 import java.io.*;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 public class DBApp {
@@ -546,10 +549,70 @@ public class DBApp {
         updatePagesNumber(tablename,currentpage+1);
     }
 
+    public void createIndex(String strTableName, String[] strarrColName) throws DBAppException, IOException, ParseException {
+        if(strarrColName.length != 3){
+            throw new DBAppException("An octree can only be created on exactly 3 dimensions.");
+        }
+        if(!checkTableExists(strTableName)){
+            throw new DBAppException("The table " + strTableName + " does not exit.");
+        }
+
+        String[] min = new String[3];
+        String[] max = new String[3];
+        String[] dataTypes = new String[3];
+        Double[] minValues = new Double[3];
+        Double[] maxValues = new Double[3];
+        ArrayList<String[]> allMetaData = getAllMetadata(strTableName);
+
+        for (int i=0 ; i<=2 ; i++){
+            Boolean flag=false;
+            for(String[] arr : allMetaData){
+                if(strarrColName[i].equals(arr[1])){
+                        flag=true;
+                        min[i]=arr[6];
+                        max[i]=arr[7];
+                        dataTypes[i]=arr[2];
+                }
+            }
+            if(flag==false){
+                throw new DBAppException("The column " +strarrColName[i] + " does not exist.");
+            }
+        }
+
+        for(int i=0 ; i<=2; i++){
+            if(dataTypes[i].equals("java.lang.String")){
+                minValues[i] = (double) min[i].hashCode();
+                maxValues[i] = (double) max[i].hashCode();
+            }
+            else if(dataTypes[i].equals("java.lang.Integer") || dataTypes[i].equals("java.lang.Double")){
+                minValues[i] = Double.parseDouble(min[i]);
+                maxValues[i] = Double.parseDouble(max[i]);
+            }
+            else {
+                DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+                Date minDate = dateFormat.parse(min[i]);
+                Date maxDate = dateFormat.parse(max[i]);
+                minValues[i] = (double) minDate.hashCode();
+                maxValues[i] = (double) maxDate.hashCode();
+            }
+        }
+        Octree octree = new Octree(minValues[0],maxValues[0],minValues[1],maxValues[1],minValues[2],maxValues[2]);
+        Object[] o1 = {"arwa",2.1,20.0};
+        Object[] o2 = {"ebram",1.3,39.0};
+        Object[] o3 = {"maya",1.8,6.0};
+        Object[] o4 = {"nour",4.1,12.0};
+        octree.insert(o1);
+        octree.insert(o2);
+        octree.insert(o3);
+        octree.insert(o4);
+
+
+        octree.printTree();
+    }
 
 
 
-    public static void main(String[] args) throws DBAppException, IOException, ClassNotFoundException {
+    public static void main(String[] args) throws DBAppException, IOException, ClassNotFoundException, ParseException {
         DBApp dbApp = new DBApp();
 
 //        Hashtable nameType = new Hashtable();
@@ -577,6 +640,9 @@ public class DBApp {
 //
 //        String displayTables = displayTablePages("Student");
 //        System.out.println(displayTables);
+          String[] arr = {"name","gpa","age"};
+          dbApp.createIndex("Students",arr);
+
     }
 
 
