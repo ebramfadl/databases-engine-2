@@ -1,4 +1,4 @@
-package main;
+package main.engine;
 
 import java.io.FileInputStream;
 import java.io.FileOutputStream;

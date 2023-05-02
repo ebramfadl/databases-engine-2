@@ -1,4 +1,4 @@
-package main;
+package main.engine;
 import java.util.*;
 
 public class Octree {
@@ -104,7 +104,7 @@ public class Octree {
 
     public void insert(Object[] arr,Node node ){
         if(node.isLeaf()){
-            if(node.elements.size()<2){
+            if(node.elements.size()<DBConfig.getOctreeNodeEntries()){
                 node.elements.add(arr);
             }
             else{

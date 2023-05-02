@@ -1,6 +1,4 @@
-package main;
-
-import main.Tuple;
+package main.engine;
 
 import java.io.Serializable;
 import java.util.Hashtable;
@@ -15,10 +13,10 @@ public class Page implements Serializable {
 
     private Vector<Tuple> pageTuples;
 
-    public Page(int pageNumber, int n, String tableName) {
+    public Page(int pageNumber, String tableName) {
         this.tableName = tableName;
         this.pageNumber = pageNumber;
-        this.n = n;
+        this.n = DBConfig.getPageMaximum();
         pageTuples = new Vector<>(n);
 
     }
