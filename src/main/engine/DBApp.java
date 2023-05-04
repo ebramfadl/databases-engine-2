@@ -293,6 +293,16 @@ public class DBApp {
         }
     }
 
+    public static  String[] getIndexToInsert(String tablename, Hashtable<String,Object> htblColNameValue) throws DBAppException {
+        Table table = deserializeTable(tablename);
+        for(String[] array : table.getAllIndices()){
+            if(htblColNameValue.containsKey(array[0]) && htblColNameValue.containsKey(array[1]) && htblColNameValue.containsKey(array[2])){
+                 return new String[] {array[0],array[1],array[2]};
+            }
+        }
+        return null;
+    }
+
     // following method inserts one row only.
     // htblColNameValue must include a value for the primary key
     public static void insertIntoTable(String strTableName, Hashtable<String,Object> htblColNameValue) throws DBAppException {
@@ -329,7 +339,17 @@ public class DBApp {
                 table.setNumberOfPages(1);
                 serializeTable(table);
                 serializePage(page);
+
+                String [] s = getIndexToInsert(strTableName,htblColNameValue);
+                Octree octree = deserializeIndex(s[0]+s[1]+s[2],strTableName);
+                Object x = htblColNameValue.get(s[0]);
+                Object y = htblColNameValue.get(s[1]);
+                Object z = htblColNameValue.get(s[2]);
+                Object[] array = {x,y,z, page.getPageNumber(), page.getPageTuples().indexOf(htblColNameValue)};
+                octree.insert(array);
+                serializeIndex(octree,strTableName);
                 return;
+
             }
 
 
@@ -350,6 +370,15 @@ public class DBApp {
                     table.setNumberOfPages(table.getNumberOfPages()+1);
                     serializeTable(table);
                     serializePage(newPage);
+
+                    String [] s = getIndexToInsert(strTableName,htblColNameValue);
+                    Octree octree = deserializeIndex(s[0]+s[1]+s[2],strTableName);
+                    Object x = htblColNameValue.get(s[0]);
+                    Object y = htblColNameValue.get(s[1]);
+                    Object z = htblColNameValue.get(s[2]);
+                    Object[] array = {x,y,z, newPage.getPageNumber(), newPage.getPageTuples().indexOf(htblColNameValue)};
+                    octree.insert(array);
+                    serializeIndex(octree,strTableName);
                     return;
 
                 }
@@ -359,6 +388,15 @@ public class DBApp {
                         currentPage.addTuple(htblColNameValue);
                         sortPage(currentPage, pk);
                         serializePage(currentPage);
+
+                        String [] s = getIndexToInsert(strTableName,htblColNameValue);
+                        Octree octree = deserializeIndex(s[0]+s[1]+s[2],strTableName);
+                        Object x = htblColNameValue.get(s[0]);
+                        Object y = htblColNameValue.get(s[1]);
+                        Object z = htblColNameValue.get(s[2]);
+                        Object[] array = {x,y,z, currentPage.getPageNumber(), currentPage.getPageTuples().indexOf(htblColNameValue)};
+                        octree.insert(array);
+                        serializeIndex(octree,strTableName);
                         return;
                     }
                     else {
@@ -368,6 +406,15 @@ public class DBApp {
                             currentPage.addTuple(htblColNameValue);
                             sortPage(currentPage, pk);
                             serializePage(currentPage);
+
+                            String [] s = getIndexToInsert(strTableName,htblColNameValue);
+                            Octree octree = deserializeIndex(s[0]+s[1]+s[2],strTableName);
+                            Object x = htblColNameValue.get(s[0]);
+                            Object y = htblColNameValue.get(s[1]);
+                            Object z = htblColNameValue.get(s[2]);
+                            Object[] array = {x,y,z, currentPage.getPageNumber(), currentPage.getPageTuples().indexOf(htblColNameValue)};
+                            octree.insert(array);
+                            serializeIndex(octree,strTableName);
                             return;
                         }
                     }
@@ -380,6 +427,15 @@ public class DBApp {
                     sortPage(currentPage, pk);
                     serializePage(currentPage);
                     insertIntoTable(strTableName, popedTuple.getHtblColNameValue());
+
+                    String [] s = getIndexToInsert(strTableName,htblColNameValue);
+                    Octree octree = deserializeIndex(s[0]+s[1]+s[2],strTableName);
+                    Object x = htblColNameValue.get(s[0]);
+                    Object y = htblColNameValue.get(s[1]);
+                    Object z = htblColNameValue.get(s[2]);
+                    Object[] array = {x,y,z, currentPage.getPageNumber(), currentPage.getPageTuples().indexOf(htblColNameValue)};
+                    octree.insert(array);
+                    serializeIndex(octree,strTableName);
                     return;
                 }
 
@@ -478,6 +534,7 @@ public class DBApp {
         serializeTable(table);
     }
     public void deleteFromTable(String strTableName, Hashtable<String,Object> htblColNameValue) throws DBAppException {
+
         try {
             if(!checkTableExists(strTableName)){
                 throw new DBAppException("Table " +strTableName+ " does not exist.");
@@ -488,6 +545,38 @@ public class DBApp {
                 clearTableContent(table);
                 return;
             }
+            String indexName = " ";
+            Boolean indexFound=false;
+            String[] array=null;
+            for(String[] arr : table.getAllIndices()){
+                if(htblColNameValue.containsKey(arr[0]) && htblColNameValue.containsKey(arr[1]) && htblColNameValue.containsKey(arr[2])){
+                    indexName=arr[0]+arr[1]+arr[2];
+                    indexFound=true;
+                    array=arr;
+                    break;
+                }
+            }
+
+            if(indexFound==true){
+                Octree octree = deserializeIndex(indexName,strTableName);
+                Object[] arr = {htblColNameValue.get(array[0]),htblColNameValue.get(array[1]),htblColNameValue.get(array[2])};
+                ArrayList<Object[]> toBeDeleted = octree.search(arr);
+                for(Object[] a : toBeDeleted){
+                    Page page = deserializePage(strTableName, (int)a[3]);
+                    page.getPageTuples().remove((int)a[4]);
+                    serializePage(page);
+                    if(page.getPageTuples().isEmpty()){
+                        File file = new File("src/main/resources/data/"+strTableName+"/"+page.getPageNumber()+".ser");
+                        file.delete();
+                        updatePagesNumber(strTableName,page.getPageNumber()+1);
+                        table.setNumberOfPages(table.getNumberOfPages()-1);
+                        serializeTable(table);
+                    }
+                }
+                return;
+            }
+
+
             for (int i = 1; i <= table.getNumberOfPages(); i++) {
                 Page page = deserializePage(strTableName,i);
                 Vector<Tuple> pageVector = page.getPageTuples();
@@ -529,6 +618,7 @@ public class DBApp {
         } catch (Exception e) {
             throw new DBAppException(e.getMessage());
         }
+
 
     }
 
@@ -596,19 +686,52 @@ public class DBApp {
                 maxValues[i] = (double) maxDate.hashCode();
             }
         }
-        Octree octree = new Octree(minValues[0],maxValues[0],minValues[1],maxValues[1],minValues[2],maxValues[2]);
-        Object[] o1 = {"arwa",2.1,20.0};
-        Object[] o2 = {"ebram",1.3,39.0};
-        Object[] o3 = {"maya",1.8,6.0};
-        Object[] o4 = {"nour",4.1,12.0};
-        octree.insert(o1);
-        octree.insert(o2);
-        octree.insert(o3);
-        octree.insert(o4);
+        Octree octree = new Octree(minValues[0],maxValues[0],minValues[1],maxValues[1],minValues[2],maxValues[2], strarrColName[0], strarrColName[1],strarrColName[2]);
+//        Object[] o1 = {"arwa",2.1,20.0};
+//        Object[] o2 = {"ebram",1.3,39.0};
+//        Object[] o3 = {"maya",1.8,6.0};
+//        Object[] o4 = {"nour",4.1,12.0};
+//        octree.insert(o1);
+//        octree.insert(o2);
+//        octree.insert(o3);
+//        octree.insert(o4);
 
 
-        octree.printTree();
+//        octree.printTree();
     }
+    public static void serializeIndex(Octree tree,String tablename) {
+        try(
+                FileOutputStream fileOut = new FileOutputStream("src/main/resources/data/" + tablename + "/" +tree.getFullName()+".ser");
+                ObjectOutputStream objectOut = new ObjectOutputStream(fileOut)) {
+            objectOut.writeObject(tree);
+            System.out.println("Index "+tree.getFullName()+" saved to file: "+tree.getFullName()+".ser");
+            objectOut.close();
+            fileOut.close();
+
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static Octree deserializeIndex(String name, String tablename) {
+        try {
+            FileInputStream fileInputStream = new FileInputStream("src/main/resources/data/" + tablename + "/" +name+".ser");
+            ObjectInputStream objectInputStream = new ObjectInputStream(fileInputStream);
+            Octree tree = (Octree) objectInputStream.readObject();
+            objectInputStream.close();
+            fileInputStream.close();
+            return tree;
+        }
+        catch(Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+
+
+
 
 
 

@@ -2,11 +2,11 @@ package main.engine;
 import java.util.*;
 
 public class Octree {
+
    private class Node {
         private double minX,maxX,minY,maxY,minZ,maxZ;
         private Node[] children;
         private ArrayList<Object[]> elements;
-
 
         public Node(double minX, double maxX, double minY, double maxY, double minZ, double maxZ) {
             this.minX = minX;
@@ -64,10 +64,14 @@ public class Octree {
     }
 
     private Node root;
+    private String xName, yName, zName;
 
-    public Octree(double minX, double maxX, double minY, double maxY, double minZ, double maxZ) {
+
+    public Octree(double minX, double maxX, double minY, double maxY, double minZ, double maxZ, String xName, String yName, String zName) {
         root=new Node(minX,maxX,minY,maxY,minZ,maxZ);
-
+        this.xName=xName;
+        this.yName=yName;
+        this.zName=zName;
     }
 
     public static int compareTo(String s1, String s2) {
@@ -208,9 +212,6 @@ public class Octree {
                     delete(arr,n);
             }
         }
-
-
-
     }
 
     public static boolean compareArr(Object[] arr1,Object[] arr2){
@@ -225,6 +226,33 @@ public class Octree {
 
     }
 
+    public String getFullName(){
+        return xName + yName + zName;
+    }
+
+    public ArrayList<Object[]> search(Object[] arr){
+        ArrayList<Object[]> result = new ArrayList<Object[]>();
+        searchHelper(arr,root,result);
+        return result;
+    }
+
+    public void searchHelper(Object[] arr,Node node,ArrayList<Object[]> result){
+        if(checkWithinRange(arr,node)){
+            if(node.isLeaf()){
+                for(int i=0;i<=node.elements.size();i++){
+                    if(compareArr(arr,node.elements.get(i))){
+                        result.add(node.elements.get(i));
+                    }
+                }
+            }
+            else{
+                for(Node n : node.children){
+                    searchHelper(arr,n,result);
+                }
+            }
+        }
+    }
+
 
 
 
@@ -234,23 +262,23 @@ public class Octree {
 
 
     public static void main(String[] args) {
-        Octree octree = new Octree(1.0,321456985.0,0.0,5.5,1.0,40.0);
-        Object[] o1 = {"arwa",2.1,20.0};
-        Object[] o2 = {"ebram",0.3,39.0};
-        Object[] o3 = {"maya",1.8,6.0};
-        Object[] o4 = {"nour",4.1,2.0};
-        Object[] o5 = {"slim",1.9,25.0};
-        Object[] o6 = {"ashry",3.1,35.0};
-        Object[] o7 = {"arxa",2.2,10.0};
-
-        octree.insert(o1);
-        octree.insert(o2);
-        octree.insert(o3);
-        octree.insert(o4);
-        octree.insert(o5);
-        octree.insert(o6);
-        octree.insert(o7);
-        octree.printTree();
+//        Octree octree = new Octree(1.0,321456985.0,0.0,5.5,1.0,40.0);
+//        Object[] o1 = {"arwa",2.1,20.0};
+//        Object[] o2 = {"ebram",0.3,39.0};
+//        Object[] o3 = {"maya",1.8,6.0};
+//        Object[] o4 = {"nour",4.1,2.0};
+//        Object[] o5 = {"slim",1.9,25.0};
+//        Object[] o6 = {"ashry",3.1,35.0};
+//        Object[] o7 = {"arxa",2.2,10.0};
+//
+//        octree.insert(o1);
+//        octree.insert(o2);
+//        octree.insert(o3);
+//        octree.insert(o4);
+//        octree.insert(o5);
+//        octree.insert(o6);
+//        octree.insert(o7);
+//        octree.printTree();
 
 
     }

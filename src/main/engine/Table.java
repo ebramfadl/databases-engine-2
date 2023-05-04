@@ -1,18 +1,21 @@
 package main.engine;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 
 public class Table implements Serializable {
 
     private  String tableName;
     private int numberOfPages;
     private int n;
+    private ArrayList<String[]> allIndices ;
 
 
     public Table(String tableName,int n) {
         this.tableName = tableName;
         this.numberOfPages = 0;
         this.n=n;
+        allIndices=new ArrayList<String[]>();
     }
 
     public String getTableName() {
@@ -33,6 +36,10 @@ public class Table implements Serializable {
 
     public int getN() {
         return n;
+    }
+
+    public ArrayList<String[]> getAllIndices() {
+        return allIndices;
     }
 
     @Override
