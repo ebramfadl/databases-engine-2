@@ -573,6 +573,8 @@ public class DBApp {
                         serializeTable(table);
                     }
                 }
+                octree.delete(arr);
+                serializeIndex(octree,strTableName);
                 return;
             }
 
