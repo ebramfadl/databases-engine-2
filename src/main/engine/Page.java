@@ -21,10 +21,11 @@ public class Page implements Serializable {
 
     }
 
-    public void addTuple(Hashtable<String , Object> htblColNameValue){
+    public Tuple addTuple(Hashtable<String , Object> htblColNameValue){
 
         Tuple tuple = new Tuple(htblColNameValue);
         pageTuples.add(tuple);
+        return tuple;
     }
 
 

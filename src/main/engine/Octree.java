@@ -1,12 +1,14 @@
 package main.engine;
+import java.io.Serializable;
 import java.util.*;
 
-public class Octree {
+public class Octree implements Serializable {
 
-   private class Node {
+   private class Node implements Serializable{
         private double minX,maxX,minY,maxY,minZ,maxZ;
         private Node[] children;
         private ArrayList<Object[]> elements;
+
 
         public Node(double minX, double maxX, double minY, double maxY, double minZ, double maxZ) {
             this.minX = minX;
@@ -53,11 +55,6 @@ public class Octree {
         public boolean isLeaf(){
             return this.children[0]==null;
         }
-//    public static contains(double x,double y,double z){
-//        if(this.)
-//
-//
-//    }
 
 
 
@@ -100,14 +97,16 @@ public class Octree {
         return -5;
     }
 
-    public void insert(Object[] arr){
+    public void insert(Object[] arr) throws DBAppException {
         insert(arr,root);
 
 
     }
 
-    public void insert(Object[] arr,Node node ){
+    public void insert(Object[] arr,Node node ) throws DBAppException {
+
         if(node.isLeaf()){
+            checkWithinRange(arr,node);
             if(node.elements.size()<DBConfig.getOctreeNodeEntries()){
                 node.elements.add(arr);
             }
@@ -122,7 +121,7 @@ public class Octree {
         }
     }
 
-    public void splitNode(Node node){
+    public void splitNode(Node node) throws DBAppException {
         double midX=(node.minX+ node.maxX)/2;
         double midY=(node.minY+ node.maxY)/2;
         double midZ=(node.minZ+ node.maxZ)/2;
@@ -143,13 +142,13 @@ public class Octree {
         node.elements = null;
     }
 
-    public int getChildIndex(Object[] arr, Node node){
+    public int getChildIndex(Object[] arr, Node node) throws DBAppException {
         for (int i = 0 ; i<=7 ; i++){
             Node current = node.children[i];
             if(checkWithinRange(arr,current))
                 return i;
         }
-        return -1;
+        throw new DBAppException("Cannot insert : "+arr[0]+" , "+arr[1]+" , "+arr[2]);
     }
 
     public static boolean checkWithinRange(Object[] arr,Node current){
@@ -157,17 +156,84 @@ public class Octree {
         String s2 = arr[1]+"";
         String s3 = arr[2]+"";
 
-        if(arr[0] instanceof String)
-            s1 = Double.parseDouble(arr[0].toString().hashCode()+"")+"";
-        if(arr[1] instanceof String)
-            s2 = Double.parseDouble(arr[1].toString().hashCode()+"")+"";
-        if(arr[2] instanceof String)
-            s3 = Double.parseDouble(arr[2].toString().hashCode()+"")+"";
+//        if(arr[0] instanceof String){
+//            if(Double.parseDouble(arr[0].toString().hashCode()+"") < 0)
+//                s1 = Double.parseDouble((arr[0].toString().hashCode()+"")+"";
+//            else
+//                s1 = Double.parseDouble(arr[0].toString().hashCode()+"")+"";
+//        }
+//        if(arr[1] instanceof String){
+//            if(Double.parseDouble(arr[1].toString().hashCode()+"") < 0)
+//                s2 = Double.parseDouble((arr[1]+" ").toString().hashCode()+"")+"";
+//            else
+//                s2 = Double.parseDouble(arr[1].toString().hashCode()+"")+"";
+//        }
+//        if(arr[2] instanceof String){
+//            if(Double.parseDouble(arr[2].toString().hashCode()+"") < 0)
+//                s3 = Double.parseDouble((arr[2]+" ").toString().hashCode()+"")+"";
+//            else
+//                s3 = Double.parseDouble(arr[2].toString().hashCode()+"")+"";
+//        }
+
+//        if(arr[0] instanceof String){
+//            Integer h1 = s1.hashCode();
+//            Integer h2 = (int)current.minX;
+//            Long l1 = h1.longValue();
+//            Long l2 = h2.longValue();
+//            int result =  l1.compareTo(l2);
+//
+//        }
+//        boolean xWithin = false;
+//        boolean yWithin = false;
+//        boolean zWithin = false;
+//
+//        if(arr[0] instanceof String) {
+//            Double hash = (double)arr[0].hashCode();
+//            Double minHash = current.minX;
+//            Double maxHash = current.maxX;
+//            if(hash.compareTo(maxHash) < 0 && hash.compareTo(minHash) > 0)
+//                xWithin = true;
+//        }
+//        if(arr[1] instanceof String) {
+//            Double hash = (double)arr[1].hashCode();
+//            Double minHash = current.minY;
+//            Double maxHash = current.maxY;
+//            if(hash.compareTo(maxHash) < 0 && hash.compareTo(minHash) > 0)
+//                yWithin = true;
+//        }
+//        if(arr[2] instanceof String) {
+//            Double hash = (double)arr[2].hashCode();
+//            Double minHash = current.minZ;
+//            Double maxHash = current.maxZ;
+//            if(hash.compareTo(maxHash) < 0 && hash.compareTo(minHash) > 0)
+//                zWithin = true;
+//        }
+        if(arr[0] instanceof String){
+            Double hashCode = Double.parseDouble((arr[0].toString().hashCode()+""));
+            if(hashCode < 0)
+                s1 = Math.abs(hashCode)+"";
+            else
+                s1 = hashCode+"";
+        }
+        if(arr[1] instanceof String){
+            Double hashCode = Double.parseDouble((arr[1].toString().hashCode()+""));
+            if(hashCode < 0)
+                s2 = Math.abs(hashCode)+"";
+            else
+                s2 = hashCode+"";
+        }
+        if(arr[2] instanceof String){
+            Double hashCode = Double.parseDouble((arr[2].toString().hashCode()+""));
+            if(hashCode < 0)
+                s3 = Math.abs(hashCode)+"";
+            else
+                s3 = hashCode+"";
+        }
 
 
         if(compareTo(s1,current.minX+"") >= 0 && compareTo(s1,current.maxX+"") < 0){
-            if(compareTo(s2,current.minY+"") >= 0 && compareTo(s2,current.maxY+"") < 0){
-                if(compareTo(s3,current.minZ+"") >= 0 && compareTo(s3,current.maxZ+"") < 0){
+            if( compareTo(s2,current.minY+"") >= 0 && compareTo(s2,current.maxY+"") < 0){
+                if( compareTo(s3,current.minZ+"") >= 0 && compareTo(s3,current.maxZ+"") < 0){
                     return true;
                 }
             }
@@ -220,7 +286,7 @@ public class Octree {
 
     }
 
-    public void update(Object[] oldObject,Object[] newObject){
+    public void update(Object[] oldObject,Object[] newObject) throws DBAppException {
         delete(oldObject);
         insert(newObject);
 
@@ -239,7 +305,7 @@ public class Octree {
     public void searchHelper(Object[] arr,Node node,ArrayList<Object[]> result){
         if(checkWithinRange(arr,node)){
             if(node.isLeaf()){
-                for(int i=0;i<=node.elements.size();i++){
+                for(int i=0;i<node.elements.size();i++){
                     if(compareArr(arr,node.elements.get(i))){
                         result.add(node.elements.get(i));
                     }
@@ -261,24 +327,29 @@ public class Octree {
 
 
 
-    public static void main(String[] args) {
-//        Octree octree = new Octree(1.0,321456985.0,0.0,5.5,1.0,40.0);
-//        Object[] o1 = {"arwa",2.1,20.0};
-//        Object[] o2 = {"ebram",0.3,39.0};
-//        Object[] o3 = {"maya",1.8,6.0};
-//        Object[] o4 = {"nour",4.1,2.0};
-//        Object[] o5 = {"slim",1.9,25.0};
-//        Object[] o6 = {"ashry",3.1,35.0};
-//        Object[] o7 = {"arxa",2.2,10.0};
-//
-//        octree.insert(o1);
-//        octree.insert(o2);
-//        octree.insert(o3);
-//        octree.insert(o4);
-//        octree.insert(o5);
-//        octree.insert(o6);
-//        octree.insert(o7);
-//        octree.printTree();
+    public static void main(String[] args) throws DBAppException {
+        Octree octree = new Octree(1.0,9.33463706E8,0.0,5.5,1.0,40.0,"","","");
+        Object[] o1 = {"Arwa",2.1,20.0};
+        Object[] o2 = {"ebram",0.3,39.0};
+        Object[] o3 = {"maya",1.8,6.0};
+        Object[] o4 = {"nour",4.1,2.0};
+        Object[] o5 = {"slim",1.9,25.0};
+        Object[] o6 = {"ashry",3.1,35.0};
+        Object[] o7 = {"arxa",2.2,10.0};
+
+        octree.insert(o1);
+        octree.insert(o2);
+        octree.insert(o3);
+        octree.insert(o4);
+        octree.insert(o5);
+        octree.insert(o6);
+        octree.insert(o7);
+//        Object[] old = {"nour",4.1,2.0};
+//        Object[] newVersion = {"bour",3.2,2.0};
+
+
+//        octree.update(old,newVersion);
+        octree.printTree();
 
 
     }

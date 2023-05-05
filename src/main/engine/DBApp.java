@@ -156,7 +156,7 @@ public class DBApp {
     }
 
     public static Page deserializePage(String tableName, int pageNum) throws ClassNotFoundException, IOException{
-        FileInputStream fileInputStream = new FileInputStream("src/main/resources/data/"+tableName+pageNum+".ser");
+        FileInputStream fileInputStream = new FileInputStream("src/main/resources/data/"+tableName+"/"+pageNum+".ser");
         ObjectInputStream objectInputStream = new ObjectInputStream(fileInputStream);
         Page page = (Page) objectInputStream.readObject();
 
@@ -334,19 +334,20 @@ public class DBApp {
 
             if(table.getNumberOfPages() == 0){
                 Page page = new Page(1,strTableName);
-                page.addTuple(htblColNameValue);
+                Tuple addedTuple = page.addTuple(htblColNameValue);
                 String path = "src/main/resources/data/"+strTableName+"/"+page.getPageNumber()+".ser";
                 table.setNumberOfPages(1);
-                serializeTable(table);
-                serializePage(page);
+
 
                 String [] s = getIndexToInsert(strTableName,htblColNameValue);
                 Octree octree = deserializeIndex(s[0]+s[1]+s[2],strTableName);
                 Object x = htblColNameValue.get(s[0]);
                 Object y = htblColNameValue.get(s[1]);
                 Object z = htblColNameValue.get(s[2]);
-                Object[] array = {x,y,z, page.getPageNumber(), page.getPageTuples().indexOf(htblColNameValue)};
+                Object[] array = {x,y,z, page.getPageNumber()};
                 octree.insert(array);
+                serializeTable(table);
+                serializePage(page);
                 serializeIndex(octree,strTableName);
                 return;
 
@@ -366,18 +367,19 @@ public class DBApp {
 
                     int pageNumber = table.getNumberOfPages()+1;
                     Page newPage = new Page(pageNumber, strTableName);
-                    newPage.addTuple(htblColNameValue);
+                    Tuple addedTuple = newPage.addTuple(htblColNameValue);
                     table.setNumberOfPages(table.getNumberOfPages()+1);
-                    serializeTable(table);
-                    serializePage(newPage);
+
 
                     String [] s = getIndexToInsert(strTableName,htblColNameValue);
                     Octree octree = deserializeIndex(s[0]+s[1]+s[2],strTableName);
                     Object x = htblColNameValue.get(s[0]);
                     Object y = htblColNameValue.get(s[1]);
                     Object z = htblColNameValue.get(s[2]);
-                    Object[] array = {x,y,z, newPage.getPageNumber(), newPage.getPageTuples().indexOf(htblColNameValue)};
+                    Object[] array = {x,y,z, newPage.getPageNumber()};
                     octree.insert(array);
+                    serializeTable(table);
+                    serializePage(newPage);
                     serializeIndex(octree,strTableName);
                     return;
 
@@ -385,17 +387,17 @@ public class DBApp {
                 else if(pageVector.size() < pageVector.capacity()) {
 
                     if(i == table.getNumberOfPages()) {
-                        currentPage.addTuple(htblColNameValue);
+                        Tuple addedTuple = currentPage.addTuple(htblColNameValue);
                         sortPage(currentPage, pk);
-                        serializePage(currentPage);
 
                         String [] s = getIndexToInsert(strTableName,htblColNameValue);
                         Octree octree = deserializeIndex(s[0]+s[1]+s[2],strTableName);
                         Object x = htblColNameValue.get(s[0]);
                         Object y = htblColNameValue.get(s[1]);
                         Object z = htblColNameValue.get(s[2]);
-                        Object[] array = {x,y,z, currentPage.getPageNumber(), currentPage.getPageTuples().indexOf(htblColNameValue)};
+                        Object[] array = {x,y,z, currentPage.getPageNumber()};
                         octree.insert(array);
+                        serializePage(currentPage);
                         serializeIndex(octree,strTableName);
                         return;
                     }
@@ -403,17 +405,17 @@ public class DBApp {
                         int nextPageNum = i+1;
                         Page nextPage = deserializePage(table.getTableName(),nextPageNum);
                         if(compareTo(key,nextPage.getPageTuples().firstElement().getHtblColNameValue().get(pk).toString()) < 0) {
-                            currentPage.addTuple(htblColNameValue);
+                            Tuple addedTuple = currentPage.addTuple(htblColNameValue);
                             sortPage(currentPage, pk);
-                            serializePage(currentPage);
 
                             String [] s = getIndexToInsert(strTableName,htblColNameValue);
                             Octree octree = deserializeIndex(s[0]+s[1]+s[2],strTableName);
                             Object x = htblColNameValue.get(s[0]);
                             Object y = htblColNameValue.get(s[1]);
                             Object z = htblColNameValue.get(s[2]);
-                            Object[] array = {x,y,z, currentPage.getPageNumber(), currentPage.getPageTuples().indexOf(htblColNameValue)};
+                            Object[] array = {x,y,z, currentPage.getPageNumber()};
                             octree.insert(array);
+                            serializePage(currentPage);
                             serializeIndex(octree,strTableName);
                             return;
                         }
@@ -423,26 +425,29 @@ public class DBApp {
                 else if(pageVector.size() == pageVector.capacity() && compareTo(key, pageMax) < 0 ){
 
                     Tuple popedTuple = (Tuple)pageVector.remove(pageVector.size()-1);
-                    currentPage.addTuple(htblColNameValue);
+                    Tuple addedTuple = currentPage.addTuple(htblColNameValue);
                     sortPage(currentPage, pk);
-                    serializePage(currentPage);
-                    insertIntoTable(strTableName, popedTuple.getHtblColNameValue());
+
 
                     String [] s = getIndexToInsert(strTableName,htblColNameValue);
                     Octree octree = deserializeIndex(s[0]+s[1]+s[2],strTableName);
                     Object x = htblColNameValue.get(s[0]);
                     Object y = htblColNameValue.get(s[1]);
                     Object z = htblColNameValue.get(s[2]);
-                    Object[] array = {x,y,z, currentPage.getPageNumber(), currentPage.getPageTuples().indexOf(htblColNameValue)};
+                    Object[] array = {x,y,z, currentPage.getPageNumber()};
+                    Object[] toDelete = {popedTuple.getHtblColNameValue().get(s[0]),popedTuple.getHtblColNameValue().get(s[1]),popedTuple.getHtblColNameValue().get(s[2])};
+                    octree.delete(toDelete);
                     octree.insert(array);
                     serializeIndex(octree,strTableName);
+                    serializePage(currentPage);
+                    insertIntoTable(strTableName, popedTuple.getHtblColNameValue());
                     return;
                 }
 
 
             }
         } catch (Exception e) {
-            throw new DBAppException(e.getMessage());
+            throw new DBAppException(e);
         }
 
     }
@@ -562,16 +567,31 @@ public class DBApp {
                 Object[] arr = {htblColNameValue.get(array[0]),htblColNameValue.get(array[1]),htblColNameValue.get(array[2])};
                 ArrayList<Object[]> toBeDeleted = octree.search(arr);
                 for(Object[] a : toBeDeleted){
-                    Page page = deserializePage(strTableName, (int)a[3]);
-                    page.getPageTuples().remove((int)a[4]);
-                    serializePage(page);
-                    if(page.getPageTuples().isEmpty()){
-                        File file = new File("src/main/resources/data/"+strTableName+"/"+page.getPageNumber()+".ser");
-                        file.delete();
-                        updatePagesNumber(strTableName,page.getPageNumber()+1);
-                        table.setNumberOfPages(table.getNumberOfPages()-1);
-                        serializeTable(table);
-                    }
+
+                        Page page = deserializePage(strTableName, (int)a[3]);
+                        Iterator<Tuple> tupleIterator = page.getPageTuples().iterator();
+                        while(tupleIterator.hasNext()){
+                            Tuple tuple = tupleIterator.next();
+                            Object xTuple = tuple.getHtblColNameValue().get(array[0]);
+                            Object yTuple = tuple.getHtblColNameValue().get(array[1]);
+                            Object zTuple = tuple.getHtblColNameValue().get(array[2]);
+                            Object toDeleteX = htblColNameValue.get(array[0]);
+                            Object toDeleteY = htblColNameValue.get(array[1]);
+                            Object toDeleteZ = htblColNameValue.get(array[2]);
+
+                            if (xTuple.equals(toDeleteX) && yTuple.equals(toDeleteY) && zTuple.equals(toDeleteZ))
+                                tupleIterator.remove();
+                        }
+                        serializePage(page);
+                        if (page.getPageTuples().isEmpty()) {
+                            File file = new File("src/main/resources/data/" + strTableName + "/" + page.getPageNumber() + ".ser");
+                            file.delete();
+                            updatePagesNumber(strTableName, page.getPageNumber() + 1);
+                            table.setNumberOfPages(table.getNumberOfPages() - 1);
+                            serializeTable(table);
+                        }
+
+
                 }
                 octree.delete(arr);
                 serializeIndex(octree,strTableName);
@@ -618,7 +638,7 @@ public class DBApp {
             }
             serializeTable(table);
         } catch (Exception e) {
-            throw new DBAppException(e.getMessage());
+            e.printStackTrace();
         }
 
 
@@ -689,18 +709,14 @@ public class DBApp {
             }
         }
         Octree octree = new Octree(minValues[0],maxValues[0],minValues[1],maxValues[1],minValues[2],maxValues[2], strarrColName[0], strarrColName[1],strarrColName[2]);
-//        Object[] o1 = {"arwa",2.1,20.0};
-//        Object[] o2 = {"ebram",1.3,39.0};
-//        Object[] o3 = {"maya",1.8,6.0};
-//        Object[] o4 = {"nour",4.1,12.0};
-//        octree.insert(o1);
-//        octree.insert(o2);
-//        octree.insert(o3);
-//        octree.insert(o4);
+        Table table = deserializeTable("Student");
+        table.getAllIndices().add(strarrColName);
+        serializeTable(table);
 
-
-//        octree.printTree();
+        serializeIndex(octree,strTableName);
     }
+
+
     public static void serializeIndex(Octree tree,String tablename) {
         try(
                 FileOutputStream fileOut = new FileOutputStream("src/main/resources/data/" + tablename + "/" +tree.getFullName()+".ser");
@@ -740,33 +756,171 @@ public class DBApp {
     public static void main(String[] args) throws DBAppException, IOException, ClassNotFoundException, ParseException {
         DBApp dbApp = new DBApp();
 
-//        Hashtable nameType = new Hashtable();
-//        nameType.put("id","java.lang.Integer");
-//        nameType.put("name","java.lang.String");
-//        nameType.put("gpa","java.lang.Double");
-//        nameType.put("age","java.lang.Integer");
+//		Hashtable htblColNameType = new Hashtable( );
+//		htblColNameType.put("id", "java.lang.Integer");
+//		htblColNameType.put("name", "java.lang.String");
+//		htblColNameType.put("gpa", "java.lang.Double");
+//		htblColNameType.put("age", "java.lang.Integer");
 //
-//        Hashtable nameMin = new Hashtable();
-//        nameMin.put("id","1");
-//        nameMin.put("name","A");
-//        nameMin.put("gpa","1.0");
-//        nameMin.put("age","10");
+//		Hashtable htblColNameMin = new Hashtable( );
+//		htblColNameMin.put("id", "0");
+//		htblColNameMin.put("name", "A");
+//		htblColNameMin.put("gpa", "0.0");
+//		htblColNameMin.put("age", "1");
 //
-//        Hashtable nameMax = new Hashtable();
-//        nameMax.put("id","100000");
-//        nameMax.put("name","ZZZZZZ");
-//        nameMax.put("gpa","7.0");
-//        nameMax.put("age","60");
+//		Hashtable htblColNameMax = new Hashtable( );
+//		htblColNameMax.put("id", "100");
+//		htblColNameMax.put("name", "ZZZZZZZZZZZ");
+//		htblColNameMax.put("gpa", "8.0");
+//		htblColNameMax.put("age", "61");
 //
-//        dbApp.createTable("Student","id",nameType,nameMin,nameMax);
+//		dbApp.createTable( "Student", "id", htblColNameType,htblColNameMin,htblColNameMax) ;
+
+//		String[] arr = {"name","gpa","age"};
+//		dbApp.createIndex("Student", arr);
+
+//        Hashtable htblColNameValue = new Hashtable( );
+//        htblColNameValue.put("id", new Integer( 5 ));
+//        htblColNameValue.put("name", new String("Ebram" ) );
+//        htblColNameValue.put("gpa", new Double( 1.5 ) );
+//        htblColNameValue.put("age", new Integer( 10 ) );
+////
+//        insertIntoTable( "Student" , htblColNameValue );
+
+//        htblColNameValue.put("id", new Integer( 5 ));
+//        htblColNameValue.put("name", new String("Sergio" ) );
+//        htblColNameValue.put("gpa", new Double( 7.5 ) );
+//        htblColNameValue.put("age", new Integer( 5 ) );
+//
+//        insertIntoTable( "Student" , htblColNameValue );
 //
 //
 //
 //
-//        String displayTables = displayTablePages("Student");
-//        System.out.println(displayTables);
-          String[] arr = {"name","gpa","age"};
-          dbApp.createIndex("Students",arr);
+//
+//        htblColNameValue = new Hashtable( );
+//        htblColNameValue.put("id", new Integer( 27 ));
+//        htblColNameValue.put("name", new String("Arwa" ) );
+//        htblColNameValue.put("gpa", new Double( 0.3 ) );
+//        htblColNameValue.put("age", new Integer( 21 ) );
+//
+//        insertIntoTable( "Student" , htblColNameValue );
+//
+//        htblColNameValue = new Hashtable( );
+//        htblColNameValue.put("id", new Integer( 25 ));
+//        htblColNameValue.put("name", new String("Maya" ) );
+//        htblColNameValue.put("gpa", new Double( 7.3 ) );
+//        htblColNameValue.put("age", new Integer( 33 ) );
+//
+//        insertIntoTable( "Student" , htblColNameValue );
+//
+//        htblColNameValue = new Hashtable( );
+//        htblColNameValue.put("id", new Integer( 30 ));
+//        htblColNameValue.put("name", new String("Sergio" ) );
+//        htblColNameValue.put("gpa", new Double( 7.5 ) );
+//        htblColNameValue.put("age", new Integer( 5 ) );
+//
+//        insertIntoTable( "Student" , htblColNameValue );
+//
+//        htblColNameValue = new Hashtable( );
+//        htblColNameValue.put("id", new Integer( 35 ));
+//        htblColNameValue.put("name", new String("Nour" ) );
+//        htblColNameValue.put("gpa", new Double( 2.6 ) );
+//        htblColNameValue.put("age", new Integer( 55 ) );
+//
+//        insertIntoTable( "Student" , htblColNameValue );
+//
+//        htblColNameValue = new Hashtable( );
+//        htblColNameValue.put("id", new Integer( 40 ));
+//        htblColNameValue.put("name", new String("Sergio" ) );
+//        htblColNameValue.put("gpa", new Double( 7.5 ) );
+//        htblColNameValue.put("age", new Integer( 5 ) );
+//
+//        insertIntoTable( "Student" , htblColNameValue );
+//
+//        htblColNameValue = new Hashtable( );
+//        htblColNameValue.put("id", new Integer( 41 ));
+//        htblColNameValue.put("name", new String("Gerard" ) );
+//        htblColNameValue.put("gpa", new Double( 4.8 ) );
+//        htblColNameValue.put("age", new Integer( 40 ) );
+//
+//        insertIntoTable( "Student" , htblColNameValue );
+//
+//        htblColNameValue = new Hashtable( );
+//        htblColNameValue.put("id", new Integer( 45 ));
+//        htblColNameValue.put("name", new String("Isco" ) );
+//        htblColNameValue.put("gpa", new Double( 0.7 ) );
+//        htblColNameValue.put("age", new Integer( 17 ) );
+//
+//        insertIntoTable( "Student" , htblColNameValue );
+//
+//        htblColNameValue = new Hashtable( );
+//        htblColNameValue.put("id", new Integer( 30 ));
+//        htblColNameValue.put("name", new String("Marcello" ) );
+//        htblColNameValue.put("gpa", new Double( 5.9) );
+//        htblColNameValue.put("age", new Integer( 49 ) );
+//
+//        insertIntoTable( "Student" , htblColNameValue );
+//
+//        htblColNameValue = new Hashtable( );
+//        htblColNameValue.put("id", new Integer( 55 ));
+//        htblColNameValue.put("name", new String("Sergio" ) );
+//        htblColNameValue.put("gpa", new Double( 7.5 ) );
+//        htblColNameValue.put("age", new Integer( 5 ) );
+//
+//        insertIntoTable( "Student" , htblColNameValue );
+//
+//
+//        htblColNameValue = new Hashtable( );
+//        htblColNameValue.put("id", new Integer( 44 ));
+//        htblColNameValue.put("name", new String("Toni" ) );
+//        htblColNameValue.put("gpa", new Double( 7.2 ) );
+//        htblColNameValue.put("age", new Integer( 27 ) );
+////
+//        insertIntoTable( "Student" , htblColNameValue );
+//
+//        htblColNameValue = new Hashtable( );
+//        htblColNameValue.put("id", new Integer( 65 ));
+//        htblColNameValue.put("name", new String("Nacho" ) );
+//        htblColNameValue.put("gpa", new Double( 5.7 ) );
+//        htblColNameValue.put("age", new Integer( 59 ) );
+//
+//        insertIntoTable( "Student" , htblColNameValue );
+//
+//        htblColNameValue = new Hashtable( );
+//        htblColNameValue.put("id", new Integer( 70 ));
+//        htblColNameValue.put("name", new String("Busquets" ) );
+//        htblColNameValue.put("gpa", new Double( 6.3 ) );
+//        htblColNameValue.put("age", new Integer( 43) );
+//
+//        insertIntoTable( "Student" , htblColNameValue );
+//
+//        htblColNameValue = new Hashtable( );
+//        htblColNameValue.put("id", new Integer( 75 ));
+//        htblColNameValue.put("name", new String("Sergio" ) );
+//        htblColNameValue.put("gpa", new Double( 7.5 ) );
+//        htblColNameValue.put("age", new Integer( 5 ) );
+//
+//        insertIntoTable( "Student" , htblColNameValue );
+
+        Hashtable hashtable = new Hashtable();
+        hashtable.put("name","Ebram");
+        hashtable.put("age",10);
+        hashtable.put("gpa",1.5);
+
+        dbApp.deleteFromTable("Student",hashtable);
+
+        Octree octree = deserializeIndex("namegpaage","Student");
+//        Object[] arr = {"Arwa",0.3,21,1,1};
+//        octree.insert(arr);
+        octree.printTree();
+
+//        Hashtable hashtable = new Hashtable();
+//        dbApp.deleteFromTable("Student",hashtable);
+
+
+
+        System.out.println(displayTablePages("Student"));
 
     }
 
