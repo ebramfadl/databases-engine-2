@@ -796,6 +796,9 @@ public class DBApp {
     public static void test(){
         ///
     }
+    public static void test2(){
+        ///
+    }
 
     public static void main(String[] args) throws DBAppException, IOException, ClassNotFoundException, ParseException {
         DBApp dbApp = new DBApp();
