@@ -748,6 +748,53 @@ public class DBApp {
     }
 
 
+    public static boolean SQLTermHelper(SQLTerm sqlTerm, Tuple tuple) throws DBAppException {
+        if(!tuple.getHtblColNameValue().containsKey(sqlTerm.getColName())){
+            throw new DBAppException("Column " + sqlTerm.getColName() + " does not exist.");
+        }
+        switch(sqlTerm.getOperator()){
+            case "=": return sqlTerm.getValue().equals(tuple.getHtblColNameValue().get(sqlTerm.getColName()));
+            case "!=": return !(sqlTerm.getValue().equals(tuple.getHtblColNameValue().get(sqlTerm.getColName())));
+            case "<=": return Double.valueOf(tuple.getHtblColNameValue().get(sqlTerm.getColName()).toString()) <= Double.valueOf(sqlTerm.getValue().toString());
+            case "<": return Double.valueOf(tuple.getHtblColNameValue().get(sqlTerm.getColName()).toString()) < Double.valueOf(sqlTerm.getValue().toString());
+            case ">=": return Double.valueOf(tuple.getHtblColNameValue().get(sqlTerm.getColName()).toString()) >= Double.valueOf(sqlTerm.getValue().toString());
+            case ">": return Double.valueOf(tuple.getHtblColNameValue().get(sqlTerm.getColName()).toString()) > Double.valueOf(sqlTerm.getValue().toString());
+        }
+        return false;
+    }
+
+    public static boolean evaluateSQLTerms(SQLTerm[] arrSQLTerms, String[] strarrOperators, Tuple tuple) throws DBAppException {
+        Boolean flag = SQLTermHelper(arrSQLTerms[0],tuple);
+        for(int i = 1 ; i<arrSQLTerms.length ; i++){
+            switch(strarrOperators[i-1]){
+                case "AND" : flag = flag && SQLTermHelper(arrSQLTerms[i],tuple); break;
+                case "OR" : flag = flag || SQLTermHelper(arrSQLTerms[i],tuple); break;
+                case "XOR" : flag = flag ^ SQLTermHelper(arrSQLTerms[i],tuple); break;
+            }
+        }
+        return flag;
+    }
+
+    public Iterator selectFromTable(SQLTerm[] arrSQLTerms, String[] strarrOperators) throws DBAppException, IOException, ClassNotFoundException {
+        if(!checkTableExists(arrSQLTerms[0].getTableName())){
+            throw new DBAppException("Table " + arrSQLTerms[0].getTableName() + " does not exist.");
+        }
+        Table table = deserializeTable(arrSQLTerms[0].getTableName());
+        Vector<Tuple> resultTuples = new Vector<>();
+        for(int i = 1; i<= table.getNumberOfPages();i++){
+            Page page = deserializePage(arrSQLTerms[i].getTableName(),i);
+            for(Tuple tuple : page.getPageTuples()){
+                 Boolean result = evaluateSQLTerms(arrSQLTerms,strarrOperators,tuple);
+                 if(result==true){
+                     resultTuples.add(tuple);
+                 }
+            }
+        }
+        return resultTuples.iterator();
+    }
+
+
+
 
 
 
@@ -755,6 +802,8 @@ public class DBApp {
 
     public static void main(String[] args) throws DBAppException, IOException, ClassNotFoundException, ParseException {
         DBApp dbApp = new DBApp();
+
+
 
 //		Hashtable htblColNameType = new Hashtable( );
 //		htblColNameType.put("id", "java.lang.Integer");
@@ -903,25 +952,44 @@ public class DBApp {
 //
 //        insertIntoTable( "Student" , htblColNameValue );
 
-        Hashtable hashtable = new Hashtable();
-        hashtable.put("name","Ebram");
-        hashtable.put("age",10);
-        hashtable.put("gpa",1.5);
-
-        dbApp.deleteFromTable("Student",hashtable);
-
-        Octree octree = deserializeIndex("namegpaage","Student");
+//        Hashtable hashtable = new Hashtable();
+//        hashtable.put("name","Ebram");
+//        hashtable.put("age",10);
+//        hashtable.put("gpa",1.5);
+//
+//        dbApp.deleteFromTable("Student",hashtable);
+//
+//        Octree octree = deserializeIndex("namegpaage","Student");
 //        Object[] arr = {"Arwa",0.3,21,1,1};
 //        octree.insert(arr);
-        octree.printTree();
+//        octree.printTree();
 
 //        Hashtable hashtable = new Hashtable();
 //        dbApp.deleteFromTable("Student",hashtable);
-
-
-
         System.out.println(displayTablePages("Student"));
 
+//        Hashtable hashtable = new Hashtable();
+//        hashtable.put("name", "Arwa");
+//        hashtable.put("age",21);
+//        hashtable.put("gpa",2.0);
+//        Tuple tuple = new Tuple(hashtable);
+//
+//        SQLTerm sqlTerm = new SQLTerm("Student","age", "<=",2);
+//        Boolean x = SQLTermHelper(sqlTerm,tuple);
+//        System.out.println(x);
+
+        SQLTerm sqlTerm1 = new SQLTerm("Student", "major", "=", "Maya" );
+        SQLTerm sqlTerm2 = new SQLTerm("Student", "gpa", ">=", 7.3 );
+        SQLTerm sqlTerm3 = new SQLTerm("Student", "age", "<", 40 );
+
+        SQLTerm[] sqlTerms = {sqlTerm1,sqlTerm2,sqlTerm3};
+        String[] operators = {"AND", "XOR"};
+
+        Iterator iterator = dbApp.selectFromTable(sqlTerms,operators);
+        while(iterator.hasNext()){
+            Tuple tuple = (Tuple)iterator.next();
+            System.out.println(tuple);
+        }
     }
 
 
