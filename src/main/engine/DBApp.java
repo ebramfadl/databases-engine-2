@@ -793,12 +793,9 @@ public class DBApp {
         return resultTuples.iterator();
     }
 
-
-
-
-
-
-
+    public static void test(){
+        ///
+    }
 
     public static void main(String[] args) throws DBAppException, IOException, ClassNotFoundException, ParseException {
         DBApp dbApp = new DBApp();
