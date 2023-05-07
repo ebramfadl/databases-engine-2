@@ -318,6 +318,104 @@ public class Octree implements Serializable {
             }
         }
     }
+    public static boolean evaluateSql(SQLTerm term,double min,double max){
+        switch(term.getOperator()){
+            case "=": if(term.getValue() instanceof String ){
+                return term.getValue().hashCode() >= min && term.getValue().hashCode() <= max;
+            }
+            else{
+                return Double.valueOf(term.getValue().toString()) >= min && Double.valueOf(term.getValue().toString()) <= max;
+            }
+            case"!=":if(term.getValue() instanceof String ){
+                return !(term.getValue().hashCode() >= min && term.getValue().hashCode() <= max);
+            }
+            else{
+                return !(Double.valueOf(term.getValue().toString()) >= min && Double.valueOf(term.getValue().toString()) <= max);
+            }
+            case ">" : return (Double.valueOf(term.getValue().toString()) < min) ||((Double.valueOf(term.getValue().toString()) >= min && Double.valueOf(term.getValue().toString()) <= max));
+            case">=":  return (Double.valueOf(term.getValue().toString()) <= min) || (Double.valueOf(term.getValue().toString()) >= min && Double.valueOf(term.getValue().toString()) <= max) ;
+            case"<":   return (Double.valueOf(term.getValue().toString()) > max) || (Double.valueOf(term.getValue().toString()) >= min && Double.valueOf(term.getValue().toString()) <= max);
+            case"<=":  return (Double.valueOf(term.getValue().toString()) >= max) || (Double.valueOf(term.getValue().toString()) >= min && Double.valueOf(term.getValue().toString()) <= max);
+        }
+
+     return false;
+
+    }
+
+    public static boolean evaluateAllTerms(SQLTerm[] arrSQLTerms,String[] strarrOperators,Node node){
+        boolean firstTerm= evaluateSql(arrSQLTerms[0], node.minX, node.maxX);
+        boolean secondTerm= evaluateSql(arrSQLTerms[1], node.minY, node.maxY);
+        boolean thirdTerm= evaluateSql(arrSQLTerms[2], node.minZ, node.maxZ);
+        boolean result1=false;
+        switch (strarrOperators[0]){
+            case "AND": result1 = firstTerm && secondTerm;break;
+            case "XOR": result1 = firstTerm ^ secondTerm;break;
+            case "OR" : result1 = firstTerm || secondTerm;break;
+        }
+       switch (strarrOperators[1]){
+           case "AND": return result1 && thirdTerm;
+           case "XOR": return result1 ^ thirdTerm;
+           case "OR" : return result1 || thirdTerm;
+       }
+     return false;
+    }
+
+    public ArrayList<Integer> select(SQLTerm[] arrSQLTerms,String[] strarrOperators){
+        ArrayList<Integer> result = new ArrayList<Integer>();
+        selectHelper(root,arrSQLTerms,strarrOperators,result);
+        return result;
+    }
+
+    public void selectHelper(Node node,SQLTerm[] arrSQLTerms,String[] strarrOperators, ArrayList<Integer> arr){
+        if(node.isLeaf()){
+            if(evaluateAllTerms(arrSQLTerms,strarrOperators,node)){
+                for(Object[] array: node.elements){
+                    //
+                }
+            }
+
+
+
+        }
+        else{
+            for(Node n : node.children){
+                selectHelper(n,arrSQLTerms,strarrOperators,arr);
+            }
+        }
+
+
+
+
+
+
+    }
+
+    public static boolean evaluateObjectSatisfies(SQLTerm[] arr,String[] starOperators,Object[] objectArr){
+        boolean result1;
+
+        switch(arr[0].getOperator()){
+            case "=": if(arr[0].getValue() instanceof String ){
+                result1= Double.parseDouble(arr[0].getValue().hashCode()+"") == (Double) objectArr[0] ;
+            }
+            else{
+                result1= Double.valueOf(arr[0].getValue().toString()) == (Double) objectArr[0] ;
+            }break;
+            case"!=":if(arr[0].getValue() instanceof String ){
+                result1= Double.parseDouble(arr[0].getValue().hashCode()+"") != (Double) objectArr[0] ;
+            }
+            else{
+                result1 =Double.valueOf(arr[0].getValue().toString()) != (Double) objectArr[0] ;
+            }break;
+            case ">"
+
+
+
+        }
+
+
+
+
+    }
 
 
 
