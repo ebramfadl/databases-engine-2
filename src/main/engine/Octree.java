@@ -363,58 +363,101 @@ public class Octree implements Serializable {
     public ArrayList<Integer> select(SQLTerm[] arrSQLTerms,String[] strarrOperators){
         ArrayList<Integer> result = new ArrayList<Integer>();
         selectHelper(root,arrSQLTerms,strarrOperators,result);
-        return result;
+
+        HashSet<Integer> set = new HashSet<>(result);
+        ArrayList<Integer> resultSet = new ArrayList<>(set);
+        return resultSet;
     }
 
-    public void selectHelper(Node node,SQLTerm[] arrSQLTerms,String[] strarrOperators, ArrayList<Integer> arr){
+    public void selectHelper(Node node,SQLTerm[] arrSQLTerms,String[] strarrOperators, ArrayList<Integer> result){
         if(node.isLeaf()){
             if(evaluateAllTerms(arrSQLTerms,strarrOperators,node)){
                 for(Object[] array: node.elements){
-                    //
+                    if(evaluateObjectSatisfies(arrSQLTerms,strarrOperators,array) ){
+                        result.add((Integer) array[3]);
+                    }
                 }
             }
-
-
-
         }
         else{
             for(Node n : node.children){
-                selectHelper(n,arrSQLTerms,strarrOperators,arr);
+                selectHelper(n,arrSQLTerms,strarrOperators,result);
             }
         }
-
-
-
-
-
 
     }
 
     public static boolean evaluateObjectSatisfies(SQLTerm[] arr,String[] starOperators,Object[] objectArr){
-        boolean result1;
+        boolean result1 = false;
+        boolean result2 = false;
+        boolean expression = false;
+        boolean result3 = false;
 
         switch(arr[0].getOperator()){
             case "=": if(arr[0].getValue() instanceof String ){
-                result1= Double.parseDouble(arr[0].getValue().hashCode()+"") == (Double) objectArr[0] ;
+                result1= arr[0].getValue().equals(objectArr[0].toString()) ;
             }
             else{
-                result1= Double.valueOf(arr[0].getValue().toString()) == (Double) objectArr[0] ;
+                result1= Double.valueOf(arr[0].getValue().toString()) == Double.valueOf(objectArr[0].toString()) ;
             }break;
             case"!=":if(arr[0].getValue() instanceof String ){
-                result1= Double.parseDouble(arr[0].getValue().hashCode()+"") != (Double) objectArr[0] ;
+                result1= Double.parseDouble(arr[0].getValue().hashCode()+"") != Double.parseDouble(arr[0].getValue().hashCode()+"") ;
             }
             else{
-                result1 =Double.valueOf(arr[0].getValue().toString()) != (Double) objectArr[0] ;
+                result1 =Double.valueOf(arr[0].getValue().toString()) != Double.valueOf(objectArr[0].toString()) ;
             }break;
-            case ">"
-
-
-
+            case ">" : result1 = Double.valueOf(objectArr[0].toString()) > Double.valueOf(arr[0].getValue().toString());break;
+            case "<" : result1 = Double.valueOf(objectArr[0].toString()) < Double.valueOf(arr[0].getValue().toString());break;
+            case "<=" : result1 = Double.valueOf(objectArr[0].toString()) <= Double.valueOf(arr[0].getValue().toString());break;
+            case ">=" : result1 = Double.valueOf(objectArr[0].toString()) >= Double.valueOf(arr[0].getValue().toString());break;
         }
-
-
-
-
+        switch(arr[1].getOperator()){
+            case "=": if(arr[1].getValue() instanceof String ){
+                result2= arr[1].getValue().equals(objectArr[1].toString()) ;
+            }
+            else{
+                result2= Double.valueOf(arr[1].getValue().toString()) == Double.valueOf(objectArr[1].toString()) ;
+            }break;
+            case"!=":if(arr[1].getValue() instanceof String ){
+                result2= Double.parseDouble(arr[1].getValue().hashCode()+"") != Double.parseDouble(arr[1].getValue().hashCode()+"") ;
+            }
+            else{
+                result2 =Double.valueOf(arr[1].getValue().toString()) != Double.valueOf(objectArr[1].toString()) ;
+            }break;
+            case ">" : result2 = Double.valueOf(objectArr[1].toString()) > Double.valueOf(arr[1].getValue().toString());break;
+            case "<" : result2 = Double.valueOf(objectArr[1].toString()) < Double.valueOf(arr[1].getValue().toString());break;
+            case "<=" : result2 = Double.valueOf(objectArr[1].toString()) <= Double.valueOf(arr[1].getValue().toString());break;
+            case ">=" : result2 = Double.valueOf(objectArr[1].toString()) >= Double.valueOf(arr[1].getValue().toString());break;
+        }
+        switch(arr[2].getOperator()){
+            case "=": if(arr[2].getValue() instanceof String ){
+                result3= arr[2].getValue().equals(objectArr[2].toString()) ;
+            }
+            else{
+                result3= Double.valueOf(arr[2].getValue().toString()) == Double.valueOf(objectArr[2].toString()) ;
+            }break;
+            case"!=":if(arr[2].getValue() instanceof String ){
+                result3= Double.parseDouble(arr[2].getValue().hashCode()+"") != Double.parseDouble(arr[2].getValue().hashCode()+"") ;
+            }
+            else{
+                result3 =Double.valueOf(arr[2].getValue().toString()) != Double.valueOf(objectArr[2].toString()) ;
+            }break;
+            case ">" : result3 = Double.valueOf(objectArr[2].toString()) > Double.valueOf(arr[2].getValue().toString());break;
+            case "<" : result3 = Double.valueOf(objectArr[2].toString()) < Double.valueOf(arr[2].getValue().toString());break;
+            case "<=" : result3 = Double.valueOf(objectArr[2].toString()) <= Double.valueOf(arr[2].getValue().toString());break;
+            case ">=" : result3 = Double.valueOf(objectArr[2].toString()) >= Double.valueOf(arr[2].getValue().toString());break;
+        }
+        switch (starOperators[0]){
+            case "AND" : expression = result1 && result2;break;
+            case "OR" : expression = result1 || result2;break;
+            case  "XOR" : expression = result1 ^ result2;break;
+        }
+        switch (starOperators[1]){
+            case "AND" : return expression && result3;
+            case "OR" : return expression || result3;
+            case  "XOR" : return expression ^ result3;
+        }
+        return false;
     }
 
 
@@ -427,13 +470,13 @@ public class Octree implements Serializable {
 
     public static void main(String[] args) throws DBAppException {
         Octree octree = new Octree(1.0,9.33463706E8,0.0,5.5,1.0,40.0,"","","");
-        Object[] o1 = {"Arwa",2.1,20.0};
-        Object[] o2 = {"ebram",0.3,39.0};
-        Object[] o3 = {"maya",1.8,6.0};
-        Object[] o4 = {"nour",4.1,2.0};
-        Object[] o5 = {"slim",1.9,25.0};
-        Object[] o6 = {"ashry",3.1,35.0};
-        Object[] o7 = {"arxa",2.2,10.0};
+        Object[] o1 = {"Arwa",2.1,20.0,1};//
+        Object[] o2 = {"ebram",0.3,39.0,1};//
+        Object[] o3 = {"maya",1.8,6.0,3};//
+        Object[] o4 = {"nour",4.1,2.0,4};//
+        Object[] o5 = {"slim",1.9,25.0,5};//
+        Object[] o6 = {"ashry",3.1,35.0,6};
+        Object[] o7 = {"arxa",2.2,10.0,7};//
 
         octree.insert(o1);
         octree.insert(o2);
@@ -448,6 +491,17 @@ public class Octree implements Serializable {
 
 //        octree.update(old,newVersion);
         octree.printTree();
+
+        SQLTerm sqlTerm1 = new SQLTerm("Student", "name", "=", "Arwa" );
+        SQLTerm sqlTerm2 = new SQLTerm("Student", "gpa", ">", 1.0 );
+        SQLTerm sqlTerm3 = new SQLTerm("Student", "age", ">", 30.0 );
+
+        SQLTerm[] sqlTerms = {sqlTerm1,sqlTerm2,sqlTerm3};
+        String[] operators = {"AND", "OR"};
+
+        ArrayList<Integer> result = octree.select(sqlTerms,operators);
+
+        System.out.println(result);
 
 
     }

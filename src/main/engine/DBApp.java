@@ -661,7 +661,7 @@ public class DBApp {
         updatePagesNumber(tablename,currentpage+1);
     }
 
-    public void createIndex(String strTableName, String[] strarrColName) throws DBAppException, IOException, ParseException {
+    public void createIndex(String strTableName, String[] strarrColName) throws DBAppException, IOException, ParseException, ClassNotFoundException {
         if(strarrColName.length != 3){
             throw new DBAppException("An octree can only be created on exactly 3 dimensions.");
         }
@@ -714,8 +714,23 @@ public class DBApp {
         serializeTable(table);
 
         serializeIndex(octree,strTableName);
+
+        populateIndex(table.getTableName(),strarrColName[0],strarrColName[1],strarrColName[2]);
     }
 
+    public static void populateIndex(String tableName,String x,String y, String z) throws DBAppException, IOException, ClassNotFoundException {
+        Table table = deserializeTable(tableName);
+        Octree octree = deserializeIndex(x+y+z+"",tableName);
+
+        for (int i = 0 ; i < table.getNumberOfPages() ; i++){
+            Page page = deserializePage(tableName,i);
+            for (Tuple tuple : page.getPageTuples()){
+                Object[] arr = {tuple.getHtblColNameValue().get(x), tuple.getHtblColNameValue().get(y), tuple.getHtblColNameValue().get(z),i};
+                octree.insert(arr);
+            }
+        }
+        serializeIndex(octree,tableName);
+    }
 
     public static void serializeIndex(Octree tree,String tablename) {
         try(
@@ -781,6 +796,51 @@ public class DBApp {
         }
         Table table = deserializeTable(arrSQLTerms[0].getTableName());
         Vector<Tuple> resultTuples = new Vector<>();
+
+        ArrayList<String[]> allIndecies = table.getAllIndices();
+        SQLTerm[] terms = new SQLTerm[3];
+        String[] operators = new String[2];
+        int counter = 0;
+        boolean indexExists = false;
+        String indexName = "";
+        for (int i = 0 ; i < allIndecies.size() ; i++){
+            String[] index = allIndecies.get(i); // [name,age,gpa]
+            boolean[] indexFound = {false,false,false};
+            for (int j = 0 ; j< index.length ; j++){
+                for (int k = 0; k< arrSQLTerms.length ; k++){
+                    if(index[j].equals(arrSQLTerms[k].getColName())){
+                        indexFound[j] = true;
+                        terms[j] = arrSQLTerms[k];
+                        if(counter < 2) {
+                            operators[counter] = strarrOperators[j];
+                            counter++;
+                        }
+                        break;
+                    }
+                }
+            }
+            if(indexFound[0] && indexFound[1] && indexFound[2]){
+                indexExists = true;
+                indexName = indexName + index[0]+index[1]+index[2];
+                break;
+            }
+        }
+
+        if(indexExists){
+            Octree octree = deserializeIndex(indexName,table.getTableName());
+            Vector<Tuple> result = new Vector<Tuple>();
+            ArrayList<Integer> pages = octree.select(terms,operators);
+            for (Integer i : pages){
+                Page page = deserializePage(table.getTableName(),i);
+                for (Tuple tuple : page.getPageTuples()){
+                    if(evaluateSQLTerms(arrSQLTerms,strarrOperators,tuple)){
+                        result.add(tuple);
+                    }
+                }
+            }
+            return result.iterator();
+        }
+
         for(int i = 1; i<= table.getNumberOfPages();i++){
             Page page = deserializePage(arrSQLTerms[i].getTableName(),i);
             for(Tuple tuple : page.getPageTuples()){
@@ -828,7 +888,7 @@ public class DBApp {
 //		String[] arr = {"name","gpa","age"};
 //		dbApp.createIndex("Student", arr);
 
-//        Hashtable htblColNameValue = new Hashtable( );
+        Hashtable htblColNameValue = new Hashtable( );
 //        htblColNameValue.put("id", new Integer( 5 ));
 //        htblColNameValue.put("name", new String("Ebram" ) );
 //        htblColNameValue.put("gpa", new Double( 1.5 ) );
@@ -966,7 +1026,6 @@ public class DBApp {
 
 //        Hashtable hashtable = new Hashtable();
 //        dbApp.deleteFromTable("Student",hashtable);
-        System.out.println(displayTablePages("Student"));
 
 //        Hashtable hashtable = new Hashtable();
 //        hashtable.put("name", "Arwa");
@@ -978,18 +1037,27 @@ public class DBApp {
 //        Boolean x = SQLTermHelper(sqlTerm,tuple);
 //        System.out.println(x);
 
-        SQLTerm sqlTerm1 = new SQLTerm("Student", "major", "=", "Maya" );
-        SQLTerm sqlTerm2 = new SQLTerm("Student", "gpa", ">=", 7.3 );
-        SQLTerm sqlTerm3 = new SQLTerm("Student", "age", "<", 40 );
 
-        SQLTerm[] sqlTerms = {sqlTerm1,sqlTerm2,sqlTerm3};
-        String[] operators = {"AND", "XOR"};
+        //"name = arwa && age < 30 || gpa = 5.7"
+        SQLTerm sqlTerm1 = new SQLTerm("Student", "name", "=", "Arwa" );
+        SQLTerm sqlTerm2 = new SQLTerm("Student", "gpa", "=", 5.7 );
+        SQLTerm sqlTerm3 = new SQLTerm("Student", "age", "<", 30 );
+        SQLTerm sqlTerm4 = new SQLTerm("Student", "id", "!=", 27 );
+
+
+        SQLTerm[] sqlTerms = {sqlTerm1,sqlTerm2,sqlTerm3,sqlTerm4};
+        String[] operators = {"AND","OR","AND"};
 
         Iterator iterator = dbApp.selectFromTable(sqlTerms,operators);
         while(iterator.hasNext()){
             Tuple tuple = (Tuple)iterator.next();
             System.out.println(tuple);
         }
+
+        System.out.println(displayTablePages("Student"));
+        Table table = deserializeTable("Student");
+        Octree octree = deserializeIndex("namegpaage",table.getTableName());
+        octree.printTree();
     }
 
 
