@@ -716,6 +716,8 @@ public class DBApp {
         serializeIndex(octree,strTableName);
 
         populateIndex(table.getTableName(),strarrColName[0],strarrColName[1],strarrColName[2]);
+
+        updateMetadata(table.getTableName(),strarrColName,strarrColName[0]+strarrColName[1]+strarrColName[2],"Octree");
     }
 
     public static void populateIndex(String tableName,String x,String y, String z) throws DBAppException, IOException, ClassNotFoundException {
@@ -794,6 +796,17 @@ public class DBApp {
         if(!checkTableExists(arrSQLTerms[0].getTableName())){
             throw new DBAppException("Table " + arrSQLTerms[0].getTableName() + " does not exist.");
         }
+
+        if(arrSQLTerms.length == 1 && arrSQLTerms[0].getColName().equals(getPrimaryKey(arrSQLTerms[0].getTableName()))){
+            int pageNum = getPageByBinarySearch(arrSQLTerms[0].getTableName(),arrSQLTerms[0].getValue().toString());
+            int location = getTupleByBinarySearch(arrSQLTerms[0].getTableName(),arrSQLTerms[0].getValue().toString());
+            Page page = deserializePage(arrSQLTerms[0].getTableName(),pageNum);
+            Tuple tuple = page.getPageTuples().get(location);
+            Vector<Tuple> result = new Vector<>();
+            result.add(tuple);
+            return result.iterator();
+        }
+
         Table table = deserializeTable(arrSQLTerms[0].getTableName());
         Vector<Tuple> resultTuples = new Vector<>();
 
@@ -841,6 +854,7 @@ public class DBApp {
             return result.iterator();
         }
 
+
         for(int i = 1; i<= table.getNumberOfPages();i++){
             Page page = deserializePage(arrSQLTerms[i].getTableName(),i);
             for(Tuple tuple : page.getPageTuples()){
@@ -851,6 +865,72 @@ public class DBApp {
             }
         }
         return resultTuples.iterator();
+    }
+
+    public static void updateMetadata(String tableName,String[] colName, String indexName,String indexType) throws IOException {
+        File input = new File("src/main/resources/metadata.csv");
+        File helperFile = new File("src/main/resources/metadata.csv.tmp");
+        BufferedReader reader = new BufferedReader(new FileReader(input));
+        BufferedWriter writer = new BufferedWriter(new FileWriter(helperFile));
+
+        String line = "";
+        while ((line = reader.readLine()) != null){
+            String[] arr = line.split(",");
+            if(arr[0].equals(tableName)){
+                if (arr[1].equals(colName[0])){
+                    String[] newLineArray = {arr[0],arr[1],arr[2],arr[3], indexName, indexType,arr[6],arr[7]};
+                    String newLine = "";
+                    for (int i=0 ; i< newLineArray.length ; i++){
+                        if(i == newLineArray.length-1)
+                            newLine = newLine + newLineArray[i];
+                        else
+                        newLine = newLine + newLineArray[i]+",";
+                    }
+                    writer.write(newLine);
+                    writer.newLine();
+                }
+                else if(arr[1].equals(colName[1])){
+                    String[] newLineArray = {arr[0],arr[1],arr[2],arr[3], indexName, indexType,arr[6],arr[7]};
+                    String newLine = "";
+                    for (int i=0 ; i< newLineArray.length ; i++){
+                        if(i == newLineArray.length-1)
+                            newLine = newLine + newLineArray[i];
+                        else
+                            newLine = newLine + newLineArray[i]+",";
+                    }
+                    writer.write(newLine);
+                    writer.newLine();
+                }
+                else if(arr[1].equals(colName[2])){
+                    String[] newLineArray = {arr[0],arr[1],arr[2],arr[3], indexName, indexType,arr[6],arr[7]};
+                    String newLine = "";
+                    for (int i=0 ; i< newLineArray.length ; i++){
+                        if(i == newLineArray.length-1)
+                            newLine = newLine + newLineArray[i];
+                        else
+                            newLine = newLine + newLineArray[i]+",";
+                    }
+                    writer.write(newLine);
+                    writer.newLine();
+                }
+                else {
+                    writer.write(line);
+                    writer.newLine();
+                }
+            }
+            else {
+                writer.write(line);
+                writer.newLine();
+            }
+        }
+
+        writer.close();
+        reader.close();
+
+        helperFile.renameTo(input);
+        input.delete();
+        helperFile.renameTo(input);
+
     }
 
     public static void test(){
@@ -1039,25 +1119,27 @@ public class DBApp {
 
 
         //"name = arwa && age < 30 || gpa = 5.7"
-        SQLTerm sqlTerm1 = new SQLTerm("Student", "name", "=", "Arwa" );
-        SQLTerm sqlTerm2 = new SQLTerm("Student", "gpa", "=", 5.7 );
-        SQLTerm sqlTerm3 = new SQLTerm("Student", "age", "<", 30 );
-        SQLTerm sqlTerm4 = new SQLTerm("Student", "id", "!=", 27 );
+//        SQLTerm sqlTerm1 = new SQLTerm("Student", "name", "=", "Arwa" );
+//        SQLTerm sqlTerm2 = new SQLTerm("Student", "gpa", "=", 5.7 );
+//        SQLTerm sqlTerm3 = new SQLTerm("Student", "age", "<", 30 );
+//        SQLTerm sqlTerm4 = new SQLTerm("Student", "id", "!=", 27 );
+//
+//
+//        SQLTerm[] sqlTerms = {sqlTerm1,sqlTerm2,sqlTerm3,sqlTerm4};
+//        String[] operators = {"AND","OR","AND"};
+//
+//        Iterator iterator = dbApp.selectFromTable(sqlTerms,operators);
+//        while(iterator.hasNext()){
+//            Tuple tuple = (Tuple)iterator.next();
+//            System.out.println(tuple);
+//        }
+//
+//        System.out.println(displayTablePages("Student"));
+//        Table table = deserializeTable("Student");
+//        Octree octree = deserializeIndex("namegpaage",table.getTableName());
+//        octree.printTree();
 
 
-        SQLTerm[] sqlTerms = {sqlTerm1,sqlTerm2,sqlTerm3,sqlTerm4};
-        String[] operators = {"AND","OR","AND"};
-
-        Iterator iterator = dbApp.selectFromTable(sqlTerms,operators);
-        while(iterator.hasNext()){
-            Tuple tuple = (Tuple)iterator.next();
-            System.out.println(tuple);
-        }
-
-        System.out.println(displayTablePages("Student"));
-        Table table = deserializeTable("Student");
-        Octree octree = deserializeIndex("namegpaage",table.getTableName());
-        octree.printTree();
     }
 
 
