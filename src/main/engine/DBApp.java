@@ -863,6 +863,44 @@ public class DBApp {
         ///
     }
 
+    public static void updateMetaDataIndex(String strTableName, String[] colName, String indexName, String indexType) throws IOException {
+        File current = new File("src/main/resources/metadata.csv");
+        File temp = new File("src/main/resources/metadata.csv.tmp");
+        BufferedReader bufferedReader = new BufferedReader(new FileReader(current));
+        BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(temp));
+        String line = "";
+        while((line=bufferedReader.readLine())!=null){
+            String[] curLine = line.split(",");
+            if(curLine[0].equals(strTableName)){
+                if(curLine[1].equals(colName[0]) || curLine[1].equals(colName[1]) || curLine[1].equals(colName[2]) ){
+                    String newLine = "";
+                    String[] newArr = {curLine[0],curLine[1],curLine[2],curLine[3], indexName, indexType, curLine[6],curLine[7]};
+                    int i = 0;
+                    while(i<newArr.length){
+                        if(i == newArr.length - 1){
+                            newLine = newLine + newArr[i];
+                        }
+                        else{
+                            newLine = newLine + newArr[i] + ",";
+                        }
+                        i++;
+                    }
+                    bufferedWriter.write(newLine);
+                    bufferedWriter.newLine();
+                }
+                else{
+                    bufferedWriter.write(line);
+                    bufferedWriter.newLine();
+                }
+            }
+        }
+        bufferedReader.close();
+        bufferedWriter.close();
+        temp.renameTo(current);
+        current.delete();
+        temp.renameTo(current);
+    }
+
     public static void main(String[] args) throws DBAppException, IOException, ClassNotFoundException, ParseException {
         DBApp dbApp = new DBApp();
 
@@ -1061,6 +1099,9 @@ public class DBApp {
 //        Table table = deserializeTable("Student");
 //        Octree octree = deserializeIndex("namegpaage",table.getTableName());
 //        octree.printTree();
+
+        String[] arr = {"name","age", "gpa"};
+        updateMetaDataIndex("Student",arr ,"namegpaage", "Octree");
 
 
 
