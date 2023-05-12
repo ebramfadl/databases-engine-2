@@ -460,8 +460,55 @@ public class Octree implements Serializable {
         return false;
     }
 
+    public int findByPrimaryKey(Object[] arr){
+        if(!arr[0].equals("null")){
+            return getPageNumByPrimaryKey(arr[0],root,root.minX,root.maxX,0);
+        }
+        else if(!arr[1].equals("null")){
+            return getPageNumByPrimaryKey(arr[1],root,root.minY,root.maxY,1);
 
+        }
+        else if(!arr[2].equals("null")){
+            return  getPageNumByPrimaryKey(arr[2],root,root.minZ,root.maxZ,2);
+        }
+        System.out.println("findByPrimaryKey");
+        return 0;
+    }
 
+    public static int getPageNumByPrimaryKey(Object key,Node node,double min,double max,int k){
+
+        if(pkInRange(key,min,max)){
+            if(node.isLeaf()){
+                for (Object[] arr : node.elements){
+                    if(arr[k].equals(key)){
+                        return  (int) arr[3];
+                    }
+                }
+
+            }
+            else {
+                for (Node n : node.children){
+                    switch (k){
+                        case 0 :  getPageNumByPrimaryKey(key,n,n.minX,n.maxX,k);break;
+                        case 1 :  getPageNumByPrimaryKey(key,n,n.minY,n.maxY,k);break;
+                        case 2 :  getPageNumByPrimaryKey(key,n,n.minZ,n.maxZ,k);break;
+                    }
+                }
+            }
+        }
+        System.out.println("getPageNumByPrimaryKey");
+        return -1;
+    }
+
+    public static boolean pkInRange(Object key, double min,double max){
+        if(key instanceof String)
+            return key.hashCode() >= min && key.hashCode() <= max;
+        else{
+            boolean r1 = Double.valueOf(key.toString()) >= min;
+            boolean r2 = Double.valueOf(key.toString()) <= max;
+            return r1 && r2;
+        }
+    }
 
 
 
@@ -469,15 +516,35 @@ public class Octree implements Serializable {
 
 
     public static void main(String[] args) throws DBAppException {
-        Octree octree = new Octree(1.0,9.33463706E8,0.0,5.5,1.0,40.0,"","","");
-        Object[] o1 = {"Arwa",2.1,20.0,1};//
-        Object[] o2 = {"ebram",0.3,39.0,1};//
-        Object[] o3 = {"maya",1.8,6.0,3};//
-        Object[] o4 = {"nour",4.1,2.0,4};//
-        Object[] o5 = {"slim",1.9,25.0,5};//
-        Object[] o6 = {"ashry",3.1,35.0,6};
-        Object[] o7 = {"arxa",2.2,10.0,7};//
+//        Octree octree = new Octree(1.0,9.33463706E8,0.0,5.5,1.0,40.0,"","","");
+        Octree octree = new Octree(1.0,100.0,1.0,9.33463706E8,1.0,40.0,"","","");
+//        Octree octree = new Octree(1.0,100.0,1.0,9.33463706E8,1.0,9.33463706E8,"","","");
 
+//        Object[] o1 = {"Arwa",2.1,20.0,1};//
+//        Object[] o2 = {"ebram",0.3,39.0,1};//
+//        Object[] o3 = {"maya",1.8,6.0,3};//
+//        Object[] o4 = {"nour",4.1,2.0,4};//
+//        Object[] o5 = {"slim",1.9,25.0,5};//
+//        Object[] o6 = {"ashry",3.1,35.0,6};
+//        Object[] o7 = {"arxa",2.2,10.0,7};//
+
+//        octree.insert(o1);
+//        octree.insert(o2);
+//        octree.insert(o3);
+//        octree.insert(o4);
+//        octree.insert(o5);
+//        octree.insert(o6);
+//        octree.insert(o7);
+//        Object[] old = {"nour",4.1,2.0};
+//        Object[] newVersion = {"bour",3.2,2.0};
+
+        Object[] o1 = {50,"arwa",20.0,5};//
+        Object[] o2 = {30,"ebram",39.0,1};//
+        Object[] o3 = {20,"maya",6.0,3};//
+        Object[] o4 = {10,"nour",2.0,4};//
+        Object[] o5 = {25,"slim",25.0,8};//
+        Object[] o6 = {35,"ashry",35.0,6};
+        Object[] o7 = {49,"arxa",10.0,7};//
         octree.insert(o1);
         octree.insert(o2);
         octree.insert(o3);
@@ -485,23 +552,22 @@ public class Octree implements Serializable {
         octree.insert(o5);
         octree.insert(o6);
         octree.insert(o7);
-//        Object[] old = {"nour",4.1,2.0};
-//        Object[] newVersion = {"bour",3.2,2.0};
 
-
-//        octree.update(old,newVersion);
+        Object[] arr = {49,"null","null"};
+        int page = octree.findByPrimaryKey(arr);
+        System.out.println(page);
         octree.printTree();
 
-        SQLTerm sqlTerm1 = new SQLTerm("Student", "name", "=", "Arwa" );
-        SQLTerm sqlTerm2 = new SQLTerm("Student", "gpa", ">", 1.0 );
-        SQLTerm sqlTerm3 = new SQLTerm("Student", "age", ">", 30.0 );
+//        SQLTerm sqlTerm1 = new SQLTerm("Student", "name", "=", "Arwa" );
+//        SQLTerm sqlTerm2 = new SQLTerm("Student", "gpa", ">", 1.0 );
+//        SQLTerm sqlTerm3 = new SQLTerm("Student", "age", ">", 30.0 );
+//
+//        SQLTerm[] sqlTerms = {sqlTerm1,sqlTerm2,sqlTerm3};
+//        String[] operators = {"AND", "OR"};
+//
+//        ArrayList<Integer> result = octree.select(sqlTerms,operators);
 
-        SQLTerm[] sqlTerms = {sqlTerm1,sqlTerm2,sqlTerm3};
-        String[] operators = {"AND", "OR"};
-
-        ArrayList<Integer> result = octree.select(sqlTerms,operators);
-
-        System.out.println(result);
+//        System.out.println(result);
 
 
     }

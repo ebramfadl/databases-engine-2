@@ -435,8 +435,10 @@ public class DBApp {
                     Object y = htblColNameValue.get(s[1]);
                     Object z = htblColNameValue.get(s[2]);
                     Object[] array = {x,y,z, currentPage.getPageNumber()};
-                    Object[] toDelete = {popedTuple.getHtblColNameValue().get(s[0]),popedTuple.getHtblColNameValue().get(s[1]),popedTuple.getHtblColNameValue().get(s[2])};
+                    Object[] toDelete = {popedTuple.getHtblColNameValue().get(s[0]),popedTuple.getHtblColNameValue().get(s[1]),popedTuple.getHtblColNameValue().get(s[2]),currentPage.getPageNumber()};
                     octree.delete(toDelete);
+                    serializeIndex(octree,strTableName);
+                    octree = deserializeIndex(s[0]+s[1]+s[2],strTableName);
                     octree.insert(array);
                     serializeIndex(octree,strTableName);
                     serializePage(currentPage);
@@ -623,6 +625,7 @@ public class DBApp {
 
 
             for (int i = 1; i <= table.getNumberOfPages(); i++) {
+                String[] indexNames = null;
                 Page page = deserializePage(strTableName,i);
                 Vector<Tuple> pageVector = page.getPageTuples();
                 Iterator<Tuple> tupleItearator = pageVector.iterator();
@@ -648,6 +651,14 @@ public class DBApp {
                     }
                     if(flag==true){
                         tupleItearator.remove();
+                        for (String[] index : table.getAllIndices()){
+                            indexNames = index;
+                            String indexToDeleteFrom = index[0]+index[1]+index[2]+"";
+                            Object[] toDelete = {tuple.getHtblColNameValue().get(index[0]),tuple.getHtblColNameValue().get(index[1]),tuple.getHtblColNameValue().get(index[2])};
+                            Octree octree = deserializeIndex(index[0]+index[1]+index[2],strTableName);
+                            octree.delete(toDelete);
+                            serializeIndex(octree,strTableName);
+                        }
                     }
                 }
                 serializePage(page);
@@ -657,6 +668,8 @@ public class DBApp {
                     updatePagesNumber(strTableName,i+1);
                     table.setNumberOfPages(table.getNumberOfPages()-1);
                     serializeTable(table);
+                    updateIndexPages(strTableName,i,indexNames);
+
                 }
             }
             serializeTable(table);
@@ -665,6 +678,24 @@ public class DBApp {
         }
 
 
+    }
+
+    public static void updateIndexPages(String tableName,int start ,String[] indexFields) throws DBAppException, IOException, ClassNotFoundException {
+        Table table = deserializeTable(tableName);
+        Octree octree = deserializeIndex(indexFields[0]+indexFields[1]+indexFields[2],tableName);
+
+        for (int i = start ; i <= table.getNumberOfPages() ; i++ ){
+            Page page = deserializePage(tableName,i);
+            for(Tuple tuple : page.getPageTuples()){
+                Object[] toDelete = {tuple.getHtblColNameValue().get(indexFields[0]),tuple.getHtblColNameValue().get(indexFields[1]),tuple.getHtblColNameValue().get(indexFields[2])};
+                Object[] toInsert = {tuple.getHtblColNameValue().get(indexFields[0]),tuple.getHtblColNameValue().get(indexFields[1]),tuple.getHtblColNameValue().get(indexFields[2]),i};
+                octree.delete(toDelete);
+                serializeIndex(octree,tableName);
+                octree = deserializeIndex(indexFields[0]+indexFields[1]+indexFields[2],tableName);
+                octree.insert(toInsert);
+                serializeIndex(octree,tableName);
+            }
+        }
     }
 
     public void updatePagesNumber(String tablename, int currentpage) throws ClassNotFoundException, IOException {
@@ -745,23 +776,10 @@ public class DBApp {
 
         serializeIndex(octree,strTableName);
 
-        populateIndex(table.getTableName(),strarrColName[0],strarrColName[1],strarrColName[2]);
+        fillIndex(table.getTableName(),strarrColName[0],strarrColName[1],strarrColName[2]);
 
     }
 
-    public static void populateIndex(String tableName,String x,String y, String z) throws DBAppException, IOException, ClassNotFoundException {
-        Table table = deserializeTable(tableName);
-        Octree octree = deserializeIndex(x+y+z+"",tableName);
-
-        for (int i = 0 ; i < table.getNumberOfPages() ; i++){
-            Page page = deserializePage(tableName,i);
-            for (Tuple tuple : page.getPageTuples()){
-                Object[] arr = {tuple.getHtblColNameValue().get(x), tuple.getHtblColNameValue().get(y), tuple.getHtblColNameValue().get(z),i};
-                octree.insert(arr);
-            }
-        }
-        serializeIndex(octree,tableName);
-    }
 
     public static void serializeIndex(Octree tree,String tablename) {
         try(
@@ -825,6 +843,7 @@ public class DBApp {
         if(!checkTableExists(arrSQLTerms[0].getTableName())){
             throw new DBAppException("Table " + arrSQLTerms[0].getTableName() + " does not exist.");
         }
+
         String tableName = arrSQLTerms[0].getTableName();
         if( (arrSQLTerms.length == 1) && (arrSQLTerms[0].getColName().equals(getPrimaryKey(tableName)))){
             int pageNumber = getPageByBinarySearch(tableName,arrSQLTerms[0].getValue().toString());
@@ -941,7 +960,7 @@ public class DBApp {
         current.delete();
         temp.renameTo(current);
     }
-    public static void insertHelper(String strtablename, String x, String y, String z) throws DBAppException, IOException, ClassNotFoundException {
+    public static void fillIndex(String strtablename, String x, String y, String z) throws DBAppException, IOException, ClassNotFoundException {
         Table table = deserializeTable(strtablename);
         Octree octree = deserializeIndex(x+y+z,strtablename);
         for(int i=1;i<=table.getNumberOfPages();i++){
@@ -984,10 +1003,9 @@ public class DBApp {
 //
 //		dbApp.createTable( "Student", "id", htblColNameType,htblColNameMin,htblColNameMax) ;
 
-		String[] arr = {"name","gpa","age"};
-		dbApp.createIndex("Student", arr);
 
-//        Hashtable htblColNameValue = new Hashtable( );
+
+        Hashtable htblColNameValue = new Hashtable( );
 //        htblColNameValue.put("id", new Integer( 5 ));
 //        htblColNameValue.put("name", new String("Ebram" ) );
 //        htblColNameValue.put("gpa", new Double( 1.5 ) );
@@ -996,7 +1014,7 @@ public class DBApp {
 //        insertIntoTable( "Student" , htblColNameValue );
 
 //        htblColNameValue.put("id", new Integer( 5 ));
-//        htblColNameValue.put("name", new String("Sergio" ) );
+//        htblColNameValue.put("name", new String("Slim" ) );
 //        htblColNameValue.put("gpa", new Double( 7.5 ) );
 //        htblColNameValue.put("age", new Integer( 5 ) );
 //
@@ -1011,7 +1029,6 @@ public class DBApp {
 //        htblColNameValue.put("name", new String("Arwa" ) );
 //        htblColNameValue.put("gpa", new Double( 0.3 ) );
 //        htblColNameValue.put("age", new Integer( 21 ) );
-//
 //        insertIntoTable( "Student" , htblColNameValue );
 //
 //        htblColNameValue = new Hashtable( );
@@ -1019,9 +1036,8 @@ public class DBApp {
 //        htblColNameValue.put("name", new String("Maya" ) );
 //        htblColNameValue.put("gpa", new Double( 7.3 ) );
 //        htblColNameValue.put("age", new Integer( 33 ) );
-//
 //        insertIntoTable( "Student" , htblColNameValue );
-//
+
 //        htblColNameValue = new Hashtable( );
 //        htblColNameValue.put("id", new Integer( 30 ));
 //        htblColNameValue.put("name", new String("Sergio" ) );
@@ -1035,7 +1051,6 @@ public class DBApp {
 //        htblColNameValue.put("name", new String("Nour" ) );
 //        htblColNameValue.put("gpa", new Double( 2.6 ) );
 //        htblColNameValue.put("age", new Integer( 55 ) );
-//
 //        insertIntoTable( "Student" , htblColNameValue );
 //
 //        htblColNameValue = new Hashtable( );
@@ -1059,7 +1074,6 @@ public class DBApp {
 //        htblColNameValue.put("name", new String("Isco" ) );
 //        htblColNameValue.put("gpa", new Double( 0.7 ) );
 //        htblColNameValue.put("age", new Integer( 17 ) );
-//
 //        insertIntoTable( "Student" , htblColNameValue );
 //
 //        htblColNameValue = new Hashtable( );
@@ -1067,7 +1081,6 @@ public class DBApp {
 //        htblColNameValue.put("name", new String("Marcello" ) );
 //        htblColNameValue.put("gpa", new Double( 5.9) );
 //        htblColNameValue.put("age", new Integer( 49 ) );
-//
 //        insertIntoTable( "Student" , htblColNameValue );
 //
 //        htblColNameValue = new Hashtable( );
@@ -1084,7 +1097,6 @@ public class DBApp {
 //        htblColNameValue.put("name", new String("Toni" ) );
 //        htblColNameValue.put("gpa", new Double( 7.2 ) );
 //        htblColNameValue.put("age", new Integer( 27 ) );
-////
 //        insertIntoTable( "Student" , htblColNameValue );
 //
 //        htblColNameValue = new Hashtable( );
@@ -1092,7 +1104,6 @@ public class DBApp {
 //        htblColNameValue.put("name", new String("Nacho" ) );
 //        htblColNameValue.put("gpa", new Double( 5.7 ) );
 //        htblColNameValue.put("age", new Integer( 59 ) );
-//
 //        insertIntoTable( "Student" , htblColNameValue );
 //
 //        htblColNameValue = new Hashtable( );
@@ -1123,8 +1134,7 @@ public class DBApp {
 //        octree.insert(arr);
 //        octree.printTree();
 
-//        Hashtable hashtable = new Hashtable();
-//        dbApp.deleteFromTable("Student",hashtable);
+
 
 //        Hashtable hashtable = new Hashtable();
 //        hashtable.put("name", "Arwa");
@@ -1150,15 +1160,100 @@ public class DBApp {
 //        Hashtable hashtable = new Hashtable();
 //        hashtable.put("name", "Ebram");
 //        hashtable.put("age", 10);
-//
-//        dbApp.updateTable("Student", "65", hashtable);
-//        System.out.println(displayTablePages("Student"));
-//        Table table = deserializeTable("Student");
-//        System.out.println(table.getAllIndices().get(0)[0]);
-//        Octree octree = deserializeIndex("namegpaage",table.getTableName());
-//        octree.printTree();
 
-//        Table table = deserializeTable("Student");
+//        htblColNameValue.put("id", new Integer( 22 ));
+//        htblColNameValue.put("name", new String("Rami" ) );
+//        htblColNameValue.put("gpa", new Double( 7.5 ) );
+//        htblColNameValue.put("age", new Integer( 5 ) );
+//        insertIntoTable( "Student" , htblColNameValue );
+
+
+
+
+
+
+        htblColNameValue = new Hashtable( );
+        htblColNameValue.put("id", new Integer( 44 ));
+        htblColNameValue.put("name", new String("Toni" ) );
+        htblColNameValue.put("gpa", new Double( 7.2 ) );
+        htblColNameValue.put("age", new Integer( 27 ) );
+        insertIntoTable( "Student" , htblColNameValue );
+
+        htblColNameValue = new Hashtable( );
+        htblColNameValue.put("id", new Integer( 30 ));
+        htblColNameValue.put("name", new String("Marcello" ) );
+        htblColNameValue.put("gpa", new Double( 5.9) );
+        htblColNameValue.put("age", new Integer( 49 ) );
+        insertIntoTable( "Student" , htblColNameValue );
+
+        htblColNameValue = new Hashtable( );
+        htblColNameValue.put("id", new Integer( 35 ));
+        htblColNameValue.put("name", new String("Nour" ) );
+        htblColNameValue.put("gpa", new Double( 2.6 ) );
+        htblColNameValue.put("age", new Integer( 55 ) );
+        insertIntoTable( "Student" , htblColNameValue );
+
+        htblColNameValue = new Hashtable( );
+        htblColNameValue.put("id", new Integer( 25 ));
+        htblColNameValue.put("name", new String("Maya" ) );
+        htblColNameValue.put("gpa", new Double( 7.3 ) );
+        htblColNameValue.put("age", new Integer( 33 ) );
+        insertIntoTable( "Student" , htblColNameValue );
+
+        htblColNameValue = new Hashtable( );
+        htblColNameValue.put("id", new Integer( 27 ));
+        htblColNameValue.put("name", new String("Arwa" ) );
+        htblColNameValue.put("gpa", new Double( 0.3 ) );
+        htblColNameValue.put("age", new Integer( 21 ) );
+        insertIntoTable( "Student" , htblColNameValue );
+
+//        htblColNameValue = new Hashtable( );
+//        htblColNameValue.put("id", new Integer( 45 ));
+//        htblColNameValue.put("name", new String("Isco" ) );
+//        htblColNameValue.put("gpa", new Double( 0.7 ) );
+//        htblColNameValue.put("age", new Integer( 17 ) );
+//        insertIntoTable( "Student" , htblColNameValue );
+
+//        htblColNameValue = new Hashtable( );
+//        htblColNameValue.put("id", new Integer( 65 ));
+//        htblColNameValue.put("name", new String("Ebram" ) );
+//        htblColNameValue.put("gpa", new Double( 5.7 ) );
+//        htblColNameValue.put("age", new Integer( 59 ) );
+//        insertIntoTable( "Student" , htblColNameValue );
+
+//        Hashtable hashtable = new Hashtable();
+//        hashtable.put("name","Maya");
+//        dbApp.deleteFromTable("Student",hashtable);
+//
+//        hashtable = new Hashtable();
+//        hashtable.put("name","Arwa");
+//        dbApp.deleteFromTable("Student",hashtable);
+//
+//        hashtable = new Hashtable();
+//        hashtable.put("name","Marcello");
+//        dbApp.deleteFromTable("Student",hashtable);
+//
+//        hashtable = new Hashtable();
+//        hashtable.put("name","Nour");
+//        dbApp.deleteFromTable("Student",hashtable);
+//
+//        hashtable = new Hashtable();
+//        hashtable.put("name","Toni");
+//        dbApp.deleteFromTable("Student",hashtable);
+
+//        updateIndexPages("Student",1,new String[]{"name","gpa","age"});
+//        String[] arr = {"name","gpa","age"};
+//        dbApp.createIndex("Student", arr);
+
+        System.out.println(displayTablePages("Student"));
+        Table table = deserializeTable("Student");
+        System.out.println(table.getAllIndices().get(0)[0]);
+        Octree octree = deserializeIndex("namegpaage",table.getTableName());
+        octree.printTree();
+
+
+//        table.getAllIndices().remove(0);
+//        serializeTable(table);
 //        Page page = deserializePage("Student",1);
 //
 //        Tuple tuple = page.getPageTuples().get(0);
@@ -1180,6 +1275,7 @@ public class DBApp {
 //            Tuple tuple = (Tuple)iterator.next();
 //            System.out.println(tuple);
 //        }
+
 
     }
 
