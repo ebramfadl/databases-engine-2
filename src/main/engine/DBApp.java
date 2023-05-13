@@ -273,9 +273,9 @@ public class DBApp {
     }
 
 
-    public static  boolean checkRecordExists(String tableName, String pkValue) throws ClassNotFoundException, IOException{
+    public static  boolean checkRecordExists(String tableName, String pkValue,int pageNum) throws ClassNotFoundException, IOException{
         try {
-            getTupleByBinarySearch(tableName,pkValue);
+            getTupleByBinarySearch(tableName,pkValue,pageNum);
         }
         catch (DBAppException e){
             return false;
@@ -327,8 +327,8 @@ public class DBApp {
 
             String pkValue =  htblColNameValue.get(pk).toString();
 
-
-            if(checkRecordExists(strTableName,pkValue)){
+            int pageNum = getPageByBinarySearch(strTableName,pkValue);
+            if(checkRecordExists(strTableName,pkValue,pageNum)){
                 throw new DBAppException("Duplicate keys for "+pk+ " value "+pkValue);
             }
 
@@ -458,11 +458,29 @@ public class DBApp {
             if(!checkTableExists(strTableName)){
                 throw new DBAppException("Table " +strTableName+ " does not exist.");
             }
-            int pageNumber = getPageByBinarySearch(strTableName, strClusteringKeyValue);
-            Page page = deserializePage(strTableName,pageNumber);
-            int tupleIndex = getTupleByBinarySearch(strTableName, strClusteringKeyValue);
-            Tuple tuple = page.getPageTuples().get(tupleIndex);
+            int pageNumber = 0;
             Table table = deserializeTable(strTableName);
+            String pk = getPrimaryKey(strTableName);
+            boolean indexOnPkFound = false;
+            for (String[] index : table.getAllIndices()){
+                for (int i = 0 ; i<index.length ; i++){
+                    if(index[i].equals(pk)){
+                        Octree octree = deserializeIndex(index[0]+index[1]+index[2],strTableName);
+                        Object[] toFindByPk = {"null","null","null"};
+                        toFindByPk[i] = Integer.valueOf(strClusteringKeyValue);
+                        pageNumber = octree.findByPrimaryKey(toFindByPk);
+                        indexOnPkFound = true;
+                        System.out.println("Update using index");
+                    }
+                }
+            }
+
+            if(! indexOnPkFound){
+                pageNumber = getPageByBinarySearch(strTableName, strClusteringKeyValue);//////////////
+            }
+            Page page = deserializePage(strTableName,pageNumber);
+            int tupleIndex = getTupleByBinarySearch(strTableName, strClusteringKeyValue,pageNumber);
+            Tuple tuple = page.getPageTuples().get(tupleIndex);
             for(int i = 0; i<table.getAllIndices().size(); i++){
                 String[] arr = table.getAllIndices().get(i);
                 if(htblColNameValue.containsKey(arr[0]) || htblColNameValue.containsKey(arr[1]) || htblColNameValue.containsKey(arr[2]) ){
@@ -507,9 +525,9 @@ public class DBApp {
             throw new DBAppException(e.getMessage());
         }
     }
-    public static int getTupleByBinarySearch(String strTableName, String value) throws ClassNotFoundException, IOException, DBAppException {
-        int x = getPageByBinarySearch(strTableName,value);
-        Page page = deserializePage(strTableName,x);
+    public static int getTupleByBinarySearch(String strTableName, String value,int pageNum) throws ClassNotFoundException, IOException, DBAppException {
+//        int x = getPageByBinarySearch(strTableName,value);
+        Page page = deserializePage(strTableName,pageNum);
         String pk = getPrimaryKey(strTableName);    //"ID"
         int low = 0;
         int high = page.getPageTuples().size() - 1;
@@ -847,7 +865,7 @@ public class DBApp {
         String tableName = arrSQLTerms[0].getTableName();
         if( (arrSQLTerms.length == 1) && (arrSQLTerms[0].getColName().equals(getPrimaryKey(tableName)))){
             int pageNumber = getPageByBinarySearch(tableName,arrSQLTerms[0].getValue().toString());
-            int tupleIndex = getTupleByBinarySearch(tableName, arrSQLTerms[0].getValue().toString());
+            int tupleIndex = getTupleByBinarySearch(tableName, arrSQLTerms[0].getValue().toString(),pageNumber);
             Page page = deserializePage(tableName,pageNumber);
             Tuple tuple = page.getPageTuples().get(tupleIndex);
 
@@ -1172,40 +1190,40 @@ public class DBApp {
 
 
 
-        htblColNameValue = new Hashtable( );
-        htblColNameValue.put("id", new Integer( 44 ));
-        htblColNameValue.put("name", new String("Toni" ) );
-        htblColNameValue.put("gpa", new Double( 7.2 ) );
-        htblColNameValue.put("age", new Integer( 27 ) );
-        insertIntoTable( "Student" , htblColNameValue );
-
-        htblColNameValue = new Hashtable( );
-        htblColNameValue.put("id", new Integer( 30 ));
-        htblColNameValue.put("name", new String("Marcello" ) );
-        htblColNameValue.put("gpa", new Double( 5.9) );
-        htblColNameValue.put("age", new Integer( 49 ) );
-        insertIntoTable( "Student" , htblColNameValue );
-
-        htblColNameValue = new Hashtable( );
-        htblColNameValue.put("id", new Integer( 35 ));
-        htblColNameValue.put("name", new String("Nour" ) );
-        htblColNameValue.put("gpa", new Double( 2.6 ) );
-        htblColNameValue.put("age", new Integer( 55 ) );
-        insertIntoTable( "Student" , htblColNameValue );
-
-        htblColNameValue = new Hashtable( );
-        htblColNameValue.put("id", new Integer( 25 ));
-        htblColNameValue.put("name", new String("Maya" ) );
-        htblColNameValue.put("gpa", new Double( 7.3 ) );
-        htblColNameValue.put("age", new Integer( 33 ) );
-        insertIntoTable( "Student" , htblColNameValue );
-
-        htblColNameValue = new Hashtable( );
-        htblColNameValue.put("id", new Integer( 27 ));
-        htblColNameValue.put("name", new String("Arwa" ) );
-        htblColNameValue.put("gpa", new Double( 0.3 ) );
-        htblColNameValue.put("age", new Integer( 21 ) );
-        insertIntoTable( "Student" , htblColNameValue );
+//        htblColNameValue = new Hashtable( );
+//        htblColNameValue.put("id", new Integer( 44 ));
+//        htblColNameValue.put("name", new String("Toni" ) );
+//        htblColNameValue.put("gpa", new Double( 7.2 ) );
+//        htblColNameValue.put("age", new Integer( 27 ) );
+//        insertIntoTable( "Student" , htblColNameValue );
+//
+//        htblColNameValue = new Hashtable( );
+//        htblColNameValue.put("id", new Integer( 30 ));
+//        htblColNameValue.put("name", new String("Marcello" ) );
+//        htblColNameValue.put("gpa", new Double( 5.9) );
+//        htblColNameValue.put("age", new Integer( 49 ) );
+//        insertIntoTable( "Student" , htblColNameValue );
+//
+//        htblColNameValue = new Hashtable( );
+//        htblColNameValue.put("id", new Integer( 35 ));
+//        htblColNameValue.put("name", new String("Nour" ) );
+//        htblColNameValue.put("gpa", new Double( 2.6 ) );
+//        htblColNameValue.put("age", new Integer( 55 ) );
+//        insertIntoTable( "Student" , htblColNameValue );
+//
+//        htblColNameValue = new Hashtable( );
+//        htblColNameValue.put("id", new Integer( 25 ));
+//        htblColNameValue.put("name", new String("Maya" ) );
+//        htblColNameValue.put("gpa", new Double( 7.3 ) );
+//        htblColNameValue.put("age", new Integer( 33 ) );
+//        insertIntoTable( "Student" , htblColNameValue );
+//
+//        htblColNameValue = new Hashtable( );
+//        htblColNameValue.put("id", new Integer( 27 ));
+//        htblColNameValue.put("name", new String("Arwa" ) );
+//        htblColNameValue.put("gpa", new Double( 0.3 ) );
+//        htblColNameValue.put("age", new Integer( 21 ) );
+//        insertIntoTable( "Student" , htblColNameValue );
 
 //        htblColNameValue = new Hashtable( );
 //        htblColNameValue.put("id", new Integer( 45 ));
@@ -1245,14 +1263,19 @@ public class DBApp {
 //        String[] arr = {"name","gpa","age"};
 //        dbApp.createIndex("Student", arr);
 
-        System.out.println(displayTablePages("Student"));
-        Table table = deserializeTable("Student");
-        System.out.println(table.getAllIndices().get(0)[0]);
-        Octree octree = deserializeIndex("namegpaage",table.getTableName());
-        octree.printTree();
+
+//        Hashtable hashtable = new Hashtable();
+//        hashtable.put("age",30);
+//        dbApp.updateTable("Student","25",hashtable);
+
+//        System.out.println(displayTablePages("Student"));
+//        Table table = deserializeTable("Student");
+//        System.out.println(table.getAllIndices().get(0)[0]);
+//        Octree octree = deserializeIndex("idgpaage",table.getTableName());
+//        octree.printTree();
 
 
-//        table.getAllIndices().remove(0);
+//        table.getAllIndices().clear();
 //        serializeTable(table);
 //        Page page = deserializePage("Student",1);
 //

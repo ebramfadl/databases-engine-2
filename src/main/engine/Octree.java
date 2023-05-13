@@ -460,28 +460,32 @@ public class Octree implements Serializable {
         return false;
     }
 
-    public int findByPrimaryKey(Object[] arr){
+    public int findByPrimaryKey(Object[] arr) throws DBAppException {
+        ArrayList<Integer> result = new ArrayList<>();
         if(!arr[0].equals("null")){
-            return getPageNumByPrimaryKey(arr[0],root,root.minX,root.maxX,0);
+            getPageNumByPrimaryKey(arr[0],root,root.minX,root.maxX,0,result);
         }
         else if(!arr[1].equals("null")){
-            return getPageNumByPrimaryKey(arr[1],root,root.minY,root.maxY,1);
+            getPageNumByPrimaryKey(arr[1],root,root.minY,root.maxY,1,result);
 
         }
         else if(!arr[2].equals("null")){
-            return  getPageNumByPrimaryKey(arr[2],root,root.minZ,root.maxZ,2);
+            getPageNumByPrimaryKey(arr[2],root,root.minZ,root.maxZ,2,result);
         }
         System.out.println("findByPrimaryKey");
-        return 0;
+        if(result.size() == 0)
+            throw new DBAppException("Primary key not found");
+
+        return result.get(0);
     }
 
-    public static int getPageNumByPrimaryKey(Object key,Node node,double min,double max,int k){
+    public static void getPageNumByPrimaryKey(Object key,Node node,double min,double max,int k,ArrayList<Integer> result){
 
-        if(pkInRange(key,min,max)){
             if(node.isLeaf()){
                 for (Object[] arr : node.elements){
                     if(arr[k].equals(key)){
-                        return  (int) arr[3];
+                        result.add( (int) arr[3]);
+                        return;
                     }
                 }
 
@@ -489,15 +493,13 @@ public class Octree implements Serializable {
             else {
                 for (Node n : node.children){
                     switch (k){
-                        case 0 :  getPageNumByPrimaryKey(key,n,n.minX,n.maxX,k);break;
-                        case 1 :  getPageNumByPrimaryKey(key,n,n.minY,n.maxY,k);break;
-                        case 2 :  getPageNumByPrimaryKey(key,n,n.minZ,n.maxZ,k);break;
+                        case 0 : if(pkInRange(key,n.minX,n.maxX))  getPageNumByPrimaryKey(key,n,n.minX,n.maxX,k,result);break;
+                        case 1 : if(pkInRange(key,n.minY,n.maxY)) getPageNumByPrimaryKey(key,n,n.minY,n.maxY,k,result);break;
+                        case 2 : if(pkInRange(key,n.minZ,n.maxZ)) getPageNumByPrimaryKey(key,n,n.minZ,n.maxZ,k,result);break;
                     }
                 }
             }
-        }
-        System.out.println("getPageNumByPrimaryKey");
-        return -1;
+
     }
 
     public static boolean pkInRange(Object key, double min,double max){
@@ -553,7 +555,7 @@ public class Octree implements Serializable {
         octree.insert(o6);
         octree.insert(o7);
 
-        Object[] arr = {49,"null","null"};
+        Object[] arr = {"null","ashry","null"};
         int page = octree.findByPrimaryKey(arr);
         System.out.println(page);
         octree.printTree();
