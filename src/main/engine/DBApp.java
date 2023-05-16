@@ -11,8 +11,7 @@ public class DBApp {
 
 
     public  void init(){
-        DBConfig.update(5,8);
-        //create csv file
+        DBConfig.update(200,16);
     }
 
     public static int compareTo(String s1, String s2) {
@@ -41,18 +40,22 @@ public class DBApp {
         return -5;
     }
 
-    public static String getPrimaryKey(String tableName) throws IOException {
+    public static String getPrimaryKey(String tableName) throws DBAppException {
 
-        String line = "";
-        String path = "src/main/resources/metadata.csv";
+        try {
+            String line = "";
+            String path = "src/main/resources/metadata.csv";
 
-        BufferedReader br = new BufferedReader(new FileReader(path));
-        while ( (line = br.readLine()) != null ){
-            String[] fields = line.split(",");
-            if(fields[0].equals(tableName) && fields[3].equals("true"))
-                return fields[1];
+            BufferedReader br = new BufferedReader(new FileReader(path));
+            while ( (line = br.readLine()) != null ){
+                String[] fields = line.split(",");
+                if(fields[0].equals(tableName) && fields[3].equals("true"))
+                    return fields[1];
+            }
+            br.close();
+        } catch (Exception e) {
+            throw new DBAppException(e);
         }
-        br.close();
         return null;
     }
 
@@ -71,14 +74,20 @@ public class DBApp {
 
     }
 
-    public static String displayTablePages(String tableName) throws ClassNotFoundException, IOException, DBAppException {
+    public static String displayTablePages(String tableName) throws DBAppException {
 
-        String str = "";
-        Table table = deserializeTable(tableName);
+        String str = null;
+        try {
+            str = "";
+            Table table = deserializeTable(tableName);
 
-        for(int i = 1 ; i<= table.getNumberOfPages() ; i++){
-            Page page = deserializePage(tableName,i);
-            str = str + page.toString()+"\n";
+            for(int i = 1 ; i<= table.getNumberOfPages() ; i++){
+                Page page = deserializePage(tableName,i);
+                str = str + page.toString()+"\n";
+            }
+
+        } catch (Exception e) {
+            throw new DBAppException(e);
         }
         return  str;
     }
@@ -155,14 +164,15 @@ public class DBApp {
         return false;
     }
 
-    public static Page deserializePage(String tableName, int pageNum) throws ClassNotFoundException, IOException{
-        FileInputStream fileInputStream = new FileInputStream("src/main/resources/data/"+tableName+"/"+pageNum+".ser");
-        ObjectInputStream objectInputStream = new ObjectInputStream(fileInputStream);
-        Page page = (Page) objectInputStream.readObject();
+    public static Page deserializePage(String tableName, int pageNum) throws IOException, ClassNotFoundException {
 
-        objectInputStream.close();
-        fileInputStream.close();
-        return page;
+            FileInputStream fileInputStream = new FileInputStream("src/main/resources/data/"+tableName+"/"+pageNum+".ser");
+            ObjectInputStream objectInputStream = new ObjectInputStream(fileInputStream);
+            Page page = (Page) objectInputStream.readObject();
+
+            objectInputStream.close();
+            fileInputStream.close();
+            return page;
 
     }
 
@@ -209,17 +219,21 @@ public class DBApp {
     }
 
 
-    public static boolean checkTableExists(String tableName) throws FileNotFoundException,IOException {
-        String line = "";
-        String path = "src/main/resources/metadata.csv";
-        BufferedReader br = new BufferedReader(new FileReader(path));
-        while((line = br.readLine())!=null) {
-            String[] fields = line.split(",");
-            if (fields[0].equals(tableName))
-                return true;
+    public static boolean checkTableExists(String tableName) throws DBAppException{
+        try {
+            String line = "";
+            String path = "src/main/resources/metadata.csv";
+            BufferedReader br = new BufferedReader(new FileReader(path));
+            while((line = br.readLine())!=null) {
+                String[] fields = line.split(",");
+                if (fields[0].equals(tableName))
+                    return true;
+            }
+            br.close();
+            return false;
+        } catch (Exception e) {
+            throw new DBAppException(e);
         }
-        br.close();
-        return false;
     }
 
 
@@ -327,28 +341,38 @@ public class DBApp {
 
             String pkValue =  htblColNameValue.get(pk).toString();
 
-            int pageNum = getPageByBinarySearch(strTableName,pkValue);
-            if(checkRecordExists(strTableName,pkValue,pageNum)){
-                throw new DBAppException("Duplicate keys for "+pk+ " value "+pkValue);
+            Integer pageNum = null;
+            try {
+                pageNum = getPageByBinarySearch(strTableName,pkValue);
+            } catch (Exception e) {
+
             }
+            if(pageNum != null){
+                if(checkRecordExists(strTableName,pkValue,pageNum)){
+                    throw new DBAppException("Duplicate keys for "+pk+ " value "+pkValue);
+                }
+            }
+
 
             if(table.getNumberOfPages() == 0){
                 Page page = new Page(1,strTableName);
                 Tuple addedTuple = page.addTuple(htblColNameValue);
                 String path = "src/main/resources/data/"+strTableName+"/"+page.getPageNumber()+".ser";
                 table.setNumberOfPages(1);
-
-
-                String [] s = getIndexToInsert(strTableName,htblColNameValue);
-                Octree octree = deserializeIndex(s[0]+s[1]+s[2],strTableName);
-                Object x = htblColNameValue.get(s[0]);
-                Object y = htblColNameValue.get(s[1]);
-                Object z = htblColNameValue.get(s[2]);
-                Object[] array = {x,y,z, page.getPageNumber()};
-                octree.insert(array);
                 serializeTable(table);
                 serializePage(page);
-                serializeIndex(octree,strTableName);
+
+                String [] s = getIndexToInsert(strTableName,htblColNameValue);
+                if(s != null){
+                    Octree octree = deserializeIndex(s[0]+s[1]+s[2],strTableName);
+                    Object x = htblColNameValue.get(s[0]);
+                    Object y = htblColNameValue.get(s[1]);
+                    Object z = htblColNameValue.get(s[2]);
+                    Object[] array = {x,y,z, page.getPageNumber()};
+                    octree.insert(array);
+                    serializeIndex(octree,strTableName);
+                }
+
                 return;
 
             }
@@ -369,18 +393,20 @@ public class DBApp {
                     Page newPage = new Page(pageNumber, strTableName);
                     Tuple addedTuple = newPage.addTuple(htblColNameValue);
                     table.setNumberOfPages(table.getNumberOfPages()+1);
-
-
-                    String [] s = getIndexToInsert(strTableName,htblColNameValue);
-                    Octree octree = deserializeIndex(s[0]+s[1]+s[2],strTableName);
-                    Object x = htblColNameValue.get(s[0]);
-                    Object y = htblColNameValue.get(s[1]);
-                    Object z = htblColNameValue.get(s[2]);
-                    Object[] array = {x,y,z, newPage.getPageNumber()};
-                    octree.insert(array);
                     serializeTable(table);
                     serializePage(newPage);
-                    serializeIndex(octree,strTableName);
+
+                    String [] s = getIndexToInsert(strTableName,htblColNameValue);
+                    if(s!=null){
+                        Octree octree = deserializeIndex(s[0]+s[1]+s[2],strTableName);
+                        Object x = htblColNameValue.get(s[0]);
+                        Object y = htblColNameValue.get(s[1]);
+                        Object z = htblColNameValue.get(s[2]);
+                        Object[] array = {x,y,z, newPage.getPageNumber()};
+                        octree.insert(array);
+                        serializeIndex(octree,strTableName);
+                    }
+
                     return;
 
                 }
@@ -389,16 +415,19 @@ public class DBApp {
                     if(i == table.getNumberOfPages()) {
                         Tuple addedTuple = currentPage.addTuple(htblColNameValue);
                         sortPage(currentPage, pk);
+                        serializePage(currentPage);
 
                         String [] s = getIndexToInsert(strTableName,htblColNameValue);
-                        Octree octree = deserializeIndex(s[0]+s[1]+s[2],strTableName);
-                        Object x = htblColNameValue.get(s[0]);
-                        Object y = htblColNameValue.get(s[1]);
-                        Object z = htblColNameValue.get(s[2]);
-                        Object[] array = {x,y,z, currentPage.getPageNumber()};
-                        octree.insert(array);
-                        serializePage(currentPage);
-                        serializeIndex(octree,strTableName);
+                        if(s!=null){
+                            Octree octree = deserializeIndex(s[0]+s[1]+s[2],strTableName);
+                            Object x = htblColNameValue.get(s[0]);
+                            Object y = htblColNameValue.get(s[1]);
+                            Object z = htblColNameValue.get(s[2]);
+                            Object[] array = {x,y,z, currentPage.getPageNumber()};
+                            octree.insert(array);
+                            serializeIndex(octree,strTableName);
+                        }
+
                         return;
                     }
                     else {
@@ -407,16 +436,19 @@ public class DBApp {
                         if(compareTo(key,nextPage.getPageTuples().firstElement().getHtblColNameValue().get(pk).toString()) < 0) {
                             Tuple addedTuple = currentPage.addTuple(htblColNameValue);
                             sortPage(currentPage, pk);
+                            serializePage(currentPage);
 
                             String [] s = getIndexToInsert(strTableName,htblColNameValue);
-                            Octree octree = deserializeIndex(s[0]+s[1]+s[2],strTableName);
-                            Object x = htblColNameValue.get(s[0]);
-                            Object y = htblColNameValue.get(s[1]);
-                            Object z = htblColNameValue.get(s[2]);
-                            Object[] array = {x,y,z, currentPage.getPageNumber()};
-                            octree.insert(array);
-                            serializePage(currentPage);
-                            serializeIndex(octree,strTableName);
+                            if(s!=null){
+                                Octree octree = deserializeIndex(s[0]+s[1]+s[2],strTableName);
+                                Object x = htblColNameValue.get(s[0]);
+                                Object y = htblColNameValue.get(s[1]);
+                                Object z = htblColNameValue.get(s[2]);
+                                Object[] array = {x,y,z, currentPage.getPageNumber()};
+                                octree.insert(array);
+                                serializeIndex(octree,strTableName);
+                            }
+
                             return;
                         }
                     }
@@ -427,21 +459,23 @@ public class DBApp {
                     Tuple popedTuple = (Tuple)pageVector.remove(pageVector.size()-1);
                     Tuple addedTuple = currentPage.addTuple(htblColNameValue);
                     sortPage(currentPage, pk);
-
+                    serializePage(currentPage);
 
                     String [] s = getIndexToInsert(strTableName,htblColNameValue);
-                    Octree octree = deserializeIndex(s[0]+s[1]+s[2],strTableName);
-                    Object x = htblColNameValue.get(s[0]);
-                    Object y = htblColNameValue.get(s[1]);
-                    Object z = htblColNameValue.get(s[2]);
-                    Object[] array = {x,y,z, currentPage.getPageNumber()};
-                    Object[] toDelete = {popedTuple.getHtblColNameValue().get(s[0]),popedTuple.getHtblColNameValue().get(s[1]),popedTuple.getHtblColNameValue().get(s[2]),currentPage.getPageNumber()};
-                    octree.delete(toDelete);
-                    serializeIndex(octree,strTableName);
-                    octree = deserializeIndex(s[0]+s[1]+s[2],strTableName);
-                    octree.insert(array);
-                    serializeIndex(octree,strTableName);
-                    serializePage(currentPage);
+                    if(s!=null){
+                        Octree octree = deserializeIndex(s[0]+s[1]+s[2],strTableName);
+                        Object x = htblColNameValue.get(s[0]);
+                        Object y = htblColNameValue.get(s[1]);
+                        Object z = htblColNameValue.get(s[2]);
+                        Object[] array = {x,y,z, currentPage.getPageNumber()};
+                        Object[] toDelete = {popedTuple.getHtblColNameValue().get(s[0]),popedTuple.getHtblColNameValue().get(s[1]),popedTuple.getHtblColNameValue().get(s[2]),currentPage.getPageNumber()};
+                        octree.delete(toDelete);
+                        serializeIndex(octree,strTableName);
+                        octree = deserializeIndex(s[0]+s[1]+s[2],strTableName);
+                        octree.insert(array);
+                        serializeIndex(octree,strTableName);
+                    }
+
                     insertIntoTable(strTableName, popedTuple.getHtblColNameValue());
                     return;
                 }
@@ -733,7 +767,7 @@ public class DBApp {
         updatePagesNumber(tablename,currentpage+1);
     }
 
-    public void createIndex(String strTableName, String[] strarrColName) throws DBAppException, IOException, ParseException, ClassNotFoundException {
+    public void createIndex(String strTableName, String[] strarrColName) throws DBAppException{
         if(strarrColName.length != 3){
             throw new DBAppException("An octree can only be created on exactly 3 dimensions.");
         }
@@ -741,60 +775,64 @@ public class DBApp {
             throw new DBAppException("The table " + strTableName + " does not exit.");
         }
 
-        String[] min = new String[3];
-        String[] max = new String[3];
-        String[] dataTypes = new String[3];
-        Double[] minValues = new Double[3];
-        Double[] maxValues = new Double[3];
-        ArrayList<String[]> allMetaData = getAllMetadata(strTableName);
+        try {
+            String[] min = new String[3];
+            String[] max = new String[3];
+            String[] dataTypes = new String[3];
+            Double[] minValues = new Double[3];
+            Double[] maxValues = new Double[3];
+            ArrayList<String[]> allMetaData = getAllMetadata(strTableName);
 
-        for (int i=0 ; i<=2 ; i++){
-            Boolean flag=false;
-            for(String[] arr : allMetaData){
-                if(strarrColName[i].equals(arr[1])){
-                        flag=true;
-                        min[i]=arr[6];
-                        max[i]=arr[7];
-                        dataTypes[i]=arr[2];
+            for (int i=0 ; i<=2 ; i++){
+                Boolean flag=false;
+                for(String[] arr : allMetaData){
+                    if(strarrColName[i].equals(arr[1])){
+                            flag=true;
+                            min[i]=arr[6];
+                            max[i]=arr[7];
+                            dataTypes[i]=arr[2];
+                    }
+                }
+                if(flag==false){
+                    throw new DBAppException("The column " +strarrColName[i] + " does not exist.");
                 }
             }
-            if(flag==false){
-                throw new DBAppException("The column " +strarrColName[i] + " does not exist.");
+
+            for(int i=0 ; i<=2; i++){
+                if(dataTypes[i].equals("java.lang.String")){
+                    minValues[i] = (double) min[i].hashCode();
+                    maxValues[i] = (double) max[i].hashCode();
+                }
+                else if(dataTypes[i].equals("java.lang.Integer") || dataTypes[i].equals("java.lang.Double")){
+                    minValues[i] = Double.parseDouble(min[i]);
+                    maxValues[i] = Double.parseDouble(max[i]);
+                }
+                else {
+                    DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+                    Date minDate = dateFormat.parse(min[i]);
+                    Date maxDate = dateFormat.parse(max[i]);
+                    minValues[i] = (double) minDate.hashCode();
+                    maxValues[i] = (double) maxDate.hashCode();
+                }
             }
+
+            Table table = deserializeTable("Student");
+            for(int i=0; i<table.getAllIndices().size();i++){
+                String[] index = table.getAllIndices().get(i);
+                if(index[0].equals(strarrColName[0]) && index[1].equals(strarrColName[1]) && index[2].equals(strarrColName[2])){
+                    throw new DBAppException("Index " + index[0]+index[1]+index[2] + " already exists.");
+                }
+            }
+            Octree octree = new Octree(minValues[0],maxValues[0],minValues[1],maxValues[1],minValues[2],maxValues[2], strarrColName[0], strarrColName[1],strarrColName[2]);
+            table.getAllIndices().add(strarrColName);
+            serializeTable(table);
+
+            serializeIndex(octree,strTableName);
+
+            fillIndex(table.getTableName(),strarrColName[0],strarrColName[1],strarrColName[2]);
+        } catch (Exception e) {
+            throw new DBAppException(e);
         }
-
-        for(int i=0 ; i<=2; i++){
-            if(dataTypes[i].equals("java.lang.String")){
-                minValues[i] = (double) min[i].hashCode();
-                maxValues[i] = (double) max[i].hashCode();
-            }
-            else if(dataTypes[i].equals("java.lang.Integer") || dataTypes[i].equals("java.lang.Double")){
-                minValues[i] = Double.parseDouble(min[i]);
-                maxValues[i] = Double.parseDouble(max[i]);
-            }
-            else {
-                DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-                Date minDate = dateFormat.parse(min[i]);
-                Date maxDate = dateFormat.parse(max[i]);
-                minValues[i] = (double) minDate.hashCode();
-                maxValues[i] = (double) maxDate.hashCode();
-            }
-        }
-
-        Table table = deserializeTable("Student");
-        for(int i=0; i<table.getAllIndices().size();i++){
-            String[] index = table.getAllIndices().get(i);
-            if(index[0].equals(strarrColName[0]) && index[1].equals(strarrColName[1]) && index[2].equals(strarrColName[2])){
-                throw new DBAppException("Index " + index[0]+index[1]+index[2] + " already exists.");
-            }
-        }
-        Octree octree = new Octree(minValues[0],maxValues[0],minValues[1],maxValues[1],minValues[2],maxValues[2], strarrColName[0], strarrColName[1],strarrColName[2]);
-        table.getAllIndices().add(strarrColName);
-        serializeTable(table);
-
-        serializeIndex(octree,strTableName);
-
-        fillIndex(table.getTableName(),strarrColName[0],strarrColName[1],strarrColName[2]);
 
     }
 
@@ -857,81 +895,86 @@ public class DBApp {
         return flag;
     }
 
-    public Iterator selectFromTable(SQLTerm[] arrSQLTerms, String[] strarrOperators) throws DBAppException, IOException, ClassNotFoundException {
-        if(!checkTableExists(arrSQLTerms[0].getTableName())){
-            throw new DBAppException("Table " + arrSQLTerms[0].getTableName() + " does not exist.");
-        }
+    public Iterator selectFromTable(SQLTerm[] arrSQLTerms, String[] strarrOperators) throws DBAppException {
+        try {
+            if(!checkTableExists(arrSQLTerms[0].getTableName())){
+                throw new DBAppException("Table " + arrSQLTerms[0].getTableName() + " does not exist.");
+            }
 
-        String tableName = arrSQLTerms[0].getTableName();
-        if( (arrSQLTerms.length == 1) && (arrSQLTerms[0].getColName().equals(getPrimaryKey(tableName)))){
-            int pageNumber = getPageByBinarySearch(tableName,arrSQLTerms[0].getValue().toString());
-            int tupleIndex = getTupleByBinarySearch(tableName, arrSQLTerms[0].getValue().toString(),pageNumber);
-            Page page = deserializePage(tableName,pageNumber);
-            Tuple tuple = page.getPageTuples().get(tupleIndex);
+            String tableName = arrSQLTerms[0].getTableName();
+            if( (arrSQLTerms.length == 1) && (arrSQLTerms[0].getColName().equals(getPrimaryKey(tableName)))){
+                int pageNumber = getPageByBinarySearch(tableName,arrSQLTerms[0].getValue().toString());
+                int tupleIndex = getTupleByBinarySearch(tableName, arrSQLTerms[0].getValue().toString(),pageNumber);
+                Page page = deserializePage(tableName,pageNumber);
+                Tuple tuple = page.getPageTuples().get(tupleIndex);
 
-            Vector<Tuple> ayhaga = new Vector<Tuple>();
-            ayhaga.add(tuple);
-            return ayhaga.iterator();
-        }
+                Vector<Tuple> ayhaga = new Vector<Tuple>();
+                ayhaga.add(tuple);
+                return ayhaga.iterator();
+            }
 
-        Table table = deserializeTable(arrSQLTerms[0].getTableName());
-        Vector<Tuple> resultTuples = new Vector<>();
+            Table table = deserializeTable(arrSQLTerms[0].getTableName());
+            Vector<Tuple> resultTuples = new Vector<>();
 
-        ArrayList<String[]> allIndecies = table.getAllIndices();
-        SQLTerm[] terms = new SQLTerm[3];
-        String[] operators = new String[2];
-        int counter = 0;
-        boolean indexExists = false;
-        String indexName = "";
-        for (int i = 0 ; i < allIndecies.size() ; i++){
-            String[] index = allIndecies.get(i); // [name,age,gpa]
-            boolean[] indexFound = {false,false,false};
-            for (int j = 0 ; j< index.length ; j++){
-                for (int k = 0; k< arrSQLTerms.length ; k++){
-                    if(index[j].equals(arrSQLTerms[k].getColName())){
-                        indexFound[j] = true;
-                        terms[j] = arrSQLTerms[k];
-                        if(counter < 2) {
-                            operators[counter] = strarrOperators[k];
-                            counter++;
+            ArrayList<String[]> allIndecies = table.getAllIndices();
+            SQLTerm[] terms = new SQLTerm[3];
+            String[] operators = new String[2];
+            int counter = 0;
+            boolean indexExists = false;
+            String indexName = "";
+            if(arrSQLTerms.length >= 3) {
+                for (int i = 0; i < allIndecies.size(); i++) {
+                    String[] index = allIndecies.get(i); // [name,age,gpa]
+                    boolean[] indexFound = {false, false, false};
+                    for (int j = 0; j < index.length; j++) {
+                        for (int k = 0; k < arrSQLTerms.length; k++) {
+                            if (index[j].equals(arrSQLTerms[k].getColName())) {
+                                indexFound[j] = true;
+                                terms[j] = arrSQLTerms[k];
+                                if (counter < 2) {
+                                    operators[counter] = strarrOperators[k];
+                                    counter++;
+                                }
+                                break;
+                            }
                         }
+                    }
+                    if (indexFound[0] && indexFound[1] && indexFound[2]) {
+                        indexExists = true;
+                        indexName = indexName + index[0] + index[1] + index[2];
                         break;
                     }
                 }
             }
-            if(indexFound[0] && indexFound[1] && indexFound[2]){
-                indexExists = true;
-                indexName = indexName + index[0]+index[1]+index[2];
-                break;
-            }
-        }
-
-        if(indexExists){
-            Octree octree = deserializeIndex(indexName,table.getTableName());
-            Vector<Tuple> result = new Vector<Tuple>();
-            ArrayList<Integer> pages = octree.select(terms,operators);
-            for (Integer i : pages){
-                Page page = deserializePage(table.getTableName(),i);
-                for (Tuple tuple : page.getPageTuples()){
-                    if(evaluateSQLTerms(arrSQLTerms,strarrOperators,tuple)){
-                        result.add(tuple);
+            if(indexExists){
+                Octree octree = deserializeIndex(indexName,table.getTableName());
+                Vector<Tuple> result = new Vector<Tuple>();
+                ArrayList<Integer> pages = octree.select(terms,operators);
+                for (Integer i : pages){
+                    Page page = deserializePage(table.getTableName(),i);
+                    for (Tuple tuple : page.getPageTuples()){
+                        if(evaluateSQLTerms(arrSQLTerms,strarrOperators,tuple)){
+                            result.add(tuple);
+                        }
                     }
                 }
+                return result.iterator();
             }
-            return result.iterator();
-        }
 
 
-        for(int i = 1; i<= table.getNumberOfPages();i++){
-            Page page = deserializePage(arrSQLTerms[i].getTableName(),i);
-            for(Tuple tuple : page.getPageTuples()){
-                 Boolean result = evaluateSQLTerms(arrSQLTerms,strarrOperators,tuple);
-                 if(result==true){
-                     resultTuples.add(tuple);
-                 }
+            for(int i = 1; i<= table.getNumberOfPages();i++){
+                Page page = deserializePage(arrSQLTerms[0].getTableName(),i);
+                for(Tuple tuple : page.getPageTuples()){
+                     Boolean result = evaluateSQLTerms(arrSQLTerms,strarrOperators,tuple);
+                     if(result==true){
+                         resultTuples.add(tuple);
+                     }
+                }
             }
+            return resultTuples.iterator();
+        } catch (Exception e) {
+            throw new DBAppException(e);
         }
-        return resultTuples.iterator();
     }
 
     public static void test(){
@@ -995,30 +1038,40 @@ public class DBApp {
         serializeIndex(octree,strtablename);
     }
 
-    public Iterator parseSQL( StringBuffer strbufSQL ) throws DBAppException, IOException, ClassNotFoundException {
+    public Iterator parseSQL( StringBuffer strbufSQL ) throws DBAppException {
 
         DBApp app = new DBApp();
 
-        if(SQLParser.getFirstWord(strbufSQL).equals("INSERT")){
-            Object[] arr = SQLParser.prepareToInsert(strbufSQL);
+        SQLParser parser = new SQLParser();
+
+        if(parser.getOperation(strbufSQL).equals("INSERT")){
+            Object[] arr = parser.prepareToInsert(strbufSQL);
             app.insertIntoTable(arr[0].toString(),(Hashtable<String, Object>) arr[1]);
         }
-        else if(SQLParser.getFirstWord(strbufSQL).equals("UPDATE")){
-            Object[] arr = SQLParser.prepareToUpdate(strbufSQL);
+        else if(parser.getOperation(strbufSQL).equals("UPDATE")){
+            Object[] arr = parser.prepareToUpdate(strbufSQL);
             app.updateTable(arr[0].toString(),arr[1].toString(),(Hashtable<String, Object>) arr[2]);
         }
-        else if(SQLParser.getFirstWord(strbufSQL).equals("DELETE")){
-            Object[] arr = SQLParser.prepareToDelete(strbufSQL);
+        else if(parser.getOperation(strbufSQL).equals("DELETE")){
+            Object[] arr = parser.prepareToDelete(strbufSQL);
             app.deleteFromTable(arr[0].toString(),(Hashtable<String, Object>) arr[1]);
         }
-        else if(SQLParser.getFirstWord(strbufSQL).equals("SELECT")){
-
+        else if(parser.getOperation(strbufSQL).equals("SELECT")){
             return app.selectFromTable(SQLParser.convertToSQLTerms(strbufSQL),SQLParser.extractOperators(strbufSQL));
         }
+        else if(parser.getOperation(strbufSQL).equals("CREATETABLE")){
+            Object[] arr = parser.prepareToCreateTable(strbufSQL);
+            app.createTable(arr[0].toString(),arr[1].toString(),(Hashtable<String, String>)arr[2],(Hashtable<String, String>)arr[3],(Hashtable<String, String>)arr[4]);
+        }
+        else if(parser.getOperation(strbufSQL).equals("CREATEINDEX")){
+            Object[] arr = parser.prepareToCreateIndex(strbufSQL);
+            app.createIndex(arr[0].toString(),(String[]) arr[1]);
+        }
+
         return  null;
     }
 
-    public static void main(String[] args) throws DBAppException, IOException, ClassNotFoundException, ParseException {
+    public static void main(String[] args) throws DBAppException {
         DBApp dbApp = new DBApp();
 
 
@@ -1070,7 +1123,7 @@ public class DBApp {
 //        htblColNameValue.put("gpa", new Double( 0.3 ) );
 //        htblColNameValue.put("age", new Integer( 21 ) );
 //        insertIntoTable( "Student" , htblColNameValue );
-//
+
 //        htblColNameValue = new Hashtable( );
 //        htblColNameValue.put("id", new Integer( 25 ));
 //        htblColNameValue.put("name", new String("Maya" ) );
@@ -1293,7 +1346,7 @@ public class DBApp {
 //        System.out.println(displayTablePages("Student"));
 //        Table table = deserializeTable("Student");
 //        System.out.println(table.getAllIndices().get(0)[0]);
-//        Octree octree = deserializeIndex("idgpaage",table.getTableName());
+//        Octree octree = deserializeIndex("namegpaage",table.getTableName());
 //        octree.printTree();
 
 
@@ -1315,11 +1368,19 @@ public class DBApp {
 //        SQLTerm[] sqlTerms = {sqlTerm};
 //        String[] operators = {"AND"};
 //
-//        Iterator iterator = dbApp.selectFromTable(sqlTerms,operators);
+//        StringBuffer buffer = new StringBuffer("SELECT * FROM Student WHERE name = 'Arwa' OR age > 30");
+//        StringBuffer buffer = new StringBuffer("UPDATE Student SET name = 'Ramos', age = 50 WHERE id = 30");
+//        dbApp.parseSQL(buffer);
+
+//            StringBuffer sqlStatement = new StringBuffer("    delete     FROM    Student     WHERE     name    = 'arwa'    AND     age = 21");
+
+//        Iterator iterator = dbApp.parseSQL(sqlStatement);
+
 //        while(iterator.hasNext()){
 //            Tuple tuple = (Tuple)iterator.next();
 //            System.out.println(tuple);
 //        }
+//        System.out.println(displayTablePages("Student"));
 
 
     }

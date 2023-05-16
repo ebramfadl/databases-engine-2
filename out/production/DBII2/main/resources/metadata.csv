@@ -1,4 +1,4 @@
-Student,gpa,java.lang.Double,false,namegpaage,Octree,0.0,8.0
-Student,age,java.lang.Integer,false,namegpaage,Octree,1,61
-Student,name,java.lang.String,false,namegpaage,Octree,A,ZZZZZZZZZZZ
+Student,gpa,java.lang.Double,false,null,null,0.0,8.0
+Student,age,java.lang.Integer,false,null,null,1,61
+Student,name,java.lang.String,false,null,null,A,ZZZZZZZZZZZ
 Student,id,java.lang.Integer,true,null,null,0,100
