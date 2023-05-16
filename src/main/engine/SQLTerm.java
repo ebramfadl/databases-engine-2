@@ -45,6 +45,10 @@ public class SQLTerm {
         this.value = value;
     }
 
+    @Override
+    public String toString() {
+        return "Table "+tableName +" "+colName+" "+operator+" "+value;
+    }
 }
 
 

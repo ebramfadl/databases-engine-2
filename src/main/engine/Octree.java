@@ -555,7 +555,7 @@ public class Octree implements Serializable {
         octree.insert(o6);
         octree.insert(o7);
 
-        Object[] arr = {"null","ashry","null"};
+        Object[] arr = {"null","maya","null"};
         int page = octree.findByPrimaryKey(arr);
         System.out.println(page);
         octree.printTree();

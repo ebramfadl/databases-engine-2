@@ -995,6 +995,28 @@ public class DBApp {
         serializeIndex(octree,strtablename);
     }
 
+    public Iterator parseSQL( StringBuffer strbufSQL ) throws DBAppException{
+
+        DBApp app = new DBApp();
+
+        if(SQLParser.getFirstWord(strbufSQL).equals("INSERT")){
+            Object[] arr = SQLParser.prepareToInsert(strbufSQL);
+            app.insertIntoTable(arr[0].toString(),(Hashtable<String, Object>) arr[1]);
+        }
+        else if(SQLParser.getFirstWord(strbufSQL).equals("UPDATE")){
+            Object[] arr = SQLParser.prepareToUpdate(strbufSQL);
+            app.updateTable(arr[0].toString(),arr[1].toString(),(Hashtable<String, Object>) arr[2]);
+        }
+        else if(SQLParser.getFirstWord(strbufSQL).equals("DELETE")){
+            Object[] arr = SQLParser.prepareToDelete(strbufSQL);
+            app.deleteFromTable(arr[0].toString(),(Hashtable<String, Object>) arr[1]);
+        }
+        else if(SQLParser.getFirstWord(strbufSQL).equals("SELECT")){
+
+            return app.selectFromTable(SQLParser.convertToSQLTerms(strbufSQL),SQLParser.extractOperators());
+        }
+        return  null;
+    }
 
     public static void main(String[] args) throws DBAppException, IOException, ClassNotFoundException, ParseException {
         DBApp dbApp = new DBApp();
