@@ -995,7 +995,7 @@ public class DBApp {
         serializeIndex(octree,strtablename);
     }
 
-    public Iterator parseSQL( StringBuffer strbufSQL ) throws DBAppException{
+    public Iterator parseSQL( StringBuffer strbufSQL ) throws DBAppException, IOException, ClassNotFoundException {
 
         DBApp app = new DBApp();
 
@@ -1013,7 +1013,7 @@ public class DBApp {
         }
         else if(SQLParser.getFirstWord(strbufSQL).equals("SELECT")){
 
-            return app.selectFromTable(SQLParser.convertToSQLTerms(strbufSQL),SQLParser.extractOperators());
+            return app.selectFromTable(SQLParser.convertToSQLTerms(strbufSQL),SQLParser.extractOperators(strbufSQL));
         }
         return  null;
     }
